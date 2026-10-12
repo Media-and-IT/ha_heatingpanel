@@ -65,7 +65,7 @@ def test_validate_day_rounds_temperatures() -> None:
         {"bounds": [0, 240, 600, 960], "temps": [19, 19, 19, 19, 19]},
         {"bounds": [120, 240, 600, 1440], "temps": [19, 19, 19, 19, 19]},
         {"bounds": [125, 240, 600, 960], "temps": [19, 19, 19, 19, 19]},
-        {"bounds": [120, 240, 600, 960], "temps": [19, 19, 19, 19, 31]},
+        {"bounds": [120, 240, 600, 960], "temps": [19, 19, 19, 19, 90]},
         {"bounds": [120, 240, 600, 960], "temps": [19, 19, 19, 19, 3.5]},
         None,
     ],
@@ -76,6 +76,7 @@ def test_validate_day_rejects(day) -> None:
         validate_day(day)
 
 
-def test_default_day_is_valid() -> None:
-    """The default for new zones passes validation."""
-    assert validate_day(default_day()) == default_day()
+@pytest.mark.parametrize("unit", ["°C", "°F"])
+def test_default_day_is_valid(unit: str) -> None:
+    """The default for new zones passes validation in both units."""
+    assert validate_day(default_day(unit)) == default_day(unit)

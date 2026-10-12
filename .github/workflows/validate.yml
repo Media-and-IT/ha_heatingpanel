@@ -4,12 +4,14 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
 
 jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
@@ -18,18 +20,28 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands
 
   tests:
+    name: tests (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: latest Home Assistant
+            packages: pytest-homeassistant-custom-component
+          # Keep in sync with "homeassistant" in hacs.json. The extra pins avoid
+          # newer dependency releases that this old Home Assistant cannot handle.
+          - name: Home Assistant 2025.1
+            packages: 'pytest-homeassistant-custom-component==0.13.205 "josepy<2" "pycares<4.9"'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - name: Install test dependencies
         run: |
-          pip install -r requirements_test.txt
+          pip install ${{ matrix.packages }}
           # The frontend package must match the installed Home Assistant version.
           pip install "$(python -c "import json, homeassistant.components.frontend as f, pathlib; print(json.loads((pathlib.Path(f.__file__).parent / 'manifest.json').read_text())['requirements'][0])")"
       - run: python -m pytest -q

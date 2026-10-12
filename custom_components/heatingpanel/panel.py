@@ -13,15 +13,13 @@ from .const import (
     FRONTEND_URL,
     PANEL_ELEMENT,
     PANEL_FILENAME,
-    PANEL_ICON,
-    PANEL_TITLE,
     PANEL_URL_PATH,
 )
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 
-async def async_register_panel(hass: HomeAssistant) -> None:
+async def async_register_panel(hass: HomeAssistant, title: str, icon: str) -> None:
     """Serve the panel script and add the panel to the sidebar."""
     if not hass.data.get(DATA_STATIC_REGISTERED):
         # Static paths cannot be removed again, so they survive a reload.
@@ -36,8 +34,8 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         hass,
         webcomponent_name=PANEL_ELEMENT,
         frontend_url_path=PANEL_URL_PATH,
-        sidebar_title=PANEL_TITLE,
-        sidebar_icon=PANEL_ICON,
+        sidebar_title=title,
+        sidebar_icon=icon,
         module_url=f"{FRONTEND_URL}/{PANEL_FILENAME}?v={mtime}",
         require_admin=False,
         config={},

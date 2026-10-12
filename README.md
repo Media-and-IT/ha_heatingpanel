@@ -1,69 +1,124 @@
-# Heating Panel (Heizungssteuerung) für Home Assistant
+# Heating Panel for Home Assistant
 
-Eigene Seite in der Home-Assistant-Seitenleiste, über die du deine Heizkörperthermostate
-komplett per Oberfläche steuerst. Kein YAML, keine Automationen nötig.
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+[![Validate](https://github.com/Media-and-IT/ha_heatingpanel/actions/workflows/validate.yml/badge.svg)](https://github.com/Media-and-IT/ha_heatingpanel/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- **Zonen**: je Raum oder je Heizkörper eine Zone, jeder Zone weist du ein oder mehrere Thermostate zu.
-- **Zeitplan-Modus**: pro Wochentag 5 aneinandergrenzende Zeitfenster. Das erste und das letzte bilden
-  zusammen die Nacht und teilen sich eine Temperatur, es gibt also 4 Temperaturen pro Tag.
-  Grenzen per Schieberegler verschieben, einen Tag per „Kopieren für“ auf andere Tage übertragen.
-- **Manueller Modus**: eine oder mehrere Zonen für X Stunden auf eine feste Temperatur, danach gilt wieder der Zeitplan.
-- **Urlaubsmodus**: Zonen bleiben auf einer festen Temperatur, bis du ihn ausschaltest.
+**Deutsch:** [README.de.md](README.de.md)
 
-## Installation über HACS
+A sidebar panel to control your radiator thermostats entirely from the UI. Group thermostats into zones,
+draw a weekly schedule with sliders, give someone who feels cold a quick boost, and switch the whole house
+to vacation mode. No YAML, no automations, no helpers.
 
-1. HACS öffnen, oben rechts „⋮“ → **Benutzerdefinierte Repositories**.
-2. URL `https://github.com/Media-and-IT/ha_heatingpanel` eintragen, Typ **Integration**, hinzufügen.
-3. „Heating Panel“ in HACS suchen und herunterladen.
-4. Home Assistant neu starten.
-5. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Heating Panel**.
-6. In der Seitenleiste erscheint der Eintrag **Heizung**.
+![Overview](docs/images/overview-en.png)
 
-## Bedienung
+## Features
 
-1. **Zone hinzufügen**, Namen vergeben, unter **Thermostate** die passenden `climate`-Entitäten anhaken.
-2. Zeitplan einstellen: Montag aufklappen, Grenzen ziehen (15-Minuten-Raster), Temperaturen wählen.
-3. Über **Kopieren für** z. B. „Arbeitstage“ wählen, **Kopieren**, dann **Speichern**.
+- **Zones**: one zone per room or per radiator, each with one or more `climate` entities.
+- **Schedule**: five adjoining periods per weekday. Drag the boundaries in 15 minute steps and pick a
+  temperature per period. The first and last period form the night and share one temperature.
+- **Copy days**: set up Monday and copy it to the whole week, to all workdays or to single days.
+- **Week slider**: shifts one boundary on every day by the same amount. Days with different times keep their differences.
+- **Manual mode**: a fixed temperature for 1 to 24 hours, afterwards the schedule applies again.
+- **Vacation mode**: a fixed temperature until you switch it off.
+- **Actions** for automations, for example vacation mode when everybody has left.
+- Works on phones, follows your language (English and German) and your unit system (°C or °F).
 
-Der Regler **Woche** unten verschiebt eine Grenze an allen Tagen gleichzeitig um denselben Betrag.
-Unterschiedliche Zeiten (z. B. Wochenende) bleiben dabei erhalten.
-Am Rechner lassen sich die Griffe auch per Tastatur bewegen (Pfeiltasten, mit Umschalt in Stundenschritten).
+## Installation
 
-## Wie geregelt wird
+### HACS
 
-- Ein Tag im Zeitplan läuft von **05:00 bis 05:00** am Folgetag. Die Nacht gehört also zum Vorabend.
-- Vorrang: **Manuell** vor **Urlaub** vor **Zeitplan**. Ein manueller Boost im Urlaubsmodus
-  fällt nach Ablauf wieder auf die Urlaubstemperatur zurück.
-- Die Integration prüft jede Minute und sendet eine Temperatur **nur, wenn sich das Ziel der Zone ändert**
-  (und nach einem Neustart). Wer am Thermostat selbst dreht, behält seinen Wert bis zum nächsten Wechsel.
-- Thermostate im Modus **Aus** werden nicht angefasst (z. B. im Sommer). Sobald sie wieder an sind,
-  bekommen sie die aktuelle Zieltemperatur.
-- Nicht erreichbare Thermostate werden jede Minute erneut versucht.
-- Die Zieltemperatur wird auf `min_temp`/`max_temp` des Thermostats begrenzt.
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Media-and-IT&repository=ha_heatingpanel&category=integration)
 
-## Aktionen für Automationen
+1. Open HACS, select the menu in the top right corner and choose **Custom repositories**.
+2. Add `https://github.com/Media-and-IT/ha_heatingpanel` with the type **Integration**.
+3. Search for **Heating Panel** in HACS and download it.
+4. Restart Home Assistant.
 
-Für z. B. „Urlaubsmodus an, wenn alle weg sind“ gibt es diese Aktionen (Zonen per Name, leer = alle Zonen):
+### Manual
 
-| Aktion | Felder |
+Copy the folder `custom_components/heatingpanel` of the [latest release](https://github.com/Media-and-IT/ha_heatingpanel/releases)
+into the `custom_components` folder of your Home Assistant configuration and restart Home Assistant.
+
+## Setup
+
+[![Open your Home Assistant instance and start setting up Heating Panel.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=heatingpanel)
+
+Go to **Settings, Devices & services, Add integration** and choose **Heating Panel**. A new entry
+**Heating** appears in the sidebar. Its title and icon can be changed in the options of the integration.
+
+## Usage
+
+![Zone editor](docs/images/zone-en.png)
+
+1. Select **Add zone**, enter a name and tick the thermostats of the zone under **Thermostats**.
+2. Expand Monday, drag the boundaries and choose a temperature for each period.
+3. Under **Copy to** choose for example **Workdays**, select **Copy** and then **Save**.
+
+On a computer the slider handles can also be moved with the arrow keys, hold Shift for steps of one hour.
+
+<img src="docs/images/mobile-en.png" alt="Phone view" width="300">
+
+## How it works
+
+- A schedule day runs from **05:00 to 05:00** the next day, so a night belongs to the evening before.
+- **Manual** wins over **vacation**, vacation wins over the **schedule**. A boost during vacation mode
+  returns to the vacation temperature when it ends.
+- Every minute the integration works out the target of each zone and sends it **only when it changes**
+  (and after a restart). If someone turns a thermostat by hand, that value stays until the next change.
+- Thermostats switched **off** are left alone, for example in summer. Once they are on again they get the current target.
+- Thermostats that are unavailable are retried every minute.
+- Targets are limited to the `min_temp` and `max_temp` reported by each thermostat.
+- Temperatures are stored in the unit of your Home Assistant instance. If you switch between °C and °F later, check your schedules.
+
+## Actions
+
+Zones are given by name. Leave `zones` empty to address all zones.
+
+| Action | Fields |
 | --- | --- |
 | `heatingpanel.set_vacation` | `zones`, `temperature` |
 | `heatingpanel.clear_vacation` | `zones` |
 | `heatingpanel.set_manual` | `zones`, `temperature`, `hours` |
 | `heatingpanel.clear_manual` | `zones` |
 
-## Entwicklung
+Example: vacation mode when nobody has been home for two hours.
 
-Aufbau:
+```yaml
+automation:
+  - alias: Heating to vacation mode when everybody is away
+    triggers:
+      - trigger: state
+        entity_id: zone.home
+        to: "0"
+        for: "02:00:00"
+    actions:
+      - action: heatingpanel.set_vacation
+        data:
+          temperature: 15
+```
 
-- `custom_components/heatingpanel/` ist die Integration (Python): Speicherung der Zonen in
-  `.storage/heatingpanel`, Minutentakt, Websocket-API für das Panel, Aktionen.
-- `custom_components/heatingpanel/frontend/heatingpanel-panel.js` ist das Panel, ein Web Component ohne Build-Schritt.
+## Troubleshooting
 
-Tests (Python 3.13):
+- **The panel looks outdated after an update**: reload the page in the browser, in the app clear the frontend cache.
+- **A thermostat does not follow the schedule**: check that it is not switched off and that it is assigned to the zone.
+  Then enable debug logging on the integration page and look for lines from `custom_components.heatingpanel`.
+
+## Development
+
+- `custom_components/heatingpanel/` is the integration: storage in `.storage/heatingpanel`, the minute
+  tick, the websocket API used by the panel and the actions.
+- `custom_components/heatingpanel/frontend/heatingpanel-panel.js` is the panel, a web component without build step.
+
+Run the tests with Python 3.13:
 
 ```bash
 pip install -r requirements_test.txt
-pip install home-assistant-frontend==<Version aus homeassistant/components/frontend/manifest.json>
+# the frontend package has to match the installed Home Assistant version
+pip install "$(python -c "import json, homeassistant.components.frontend as f, pathlib; print(json.loads((pathlib.Path(f.__file__).parent / 'manifest.json').read_text())['requirements'][0])")"
 python -m pytest -q
 ```
+
+## License
+
+[MIT](LICENSE)

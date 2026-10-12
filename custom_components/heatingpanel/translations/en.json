@@ -3,11 +3,26 @@
     "step": {
       "user": {
         "title": "Heating Panel",
-        "description": "Sets up the heating panel. Afterwards create zones and schedules via the “Heizung” entry in the sidebar."
+        "description": "Sets up Heating Panel. Afterwards create zones and schedules via the new entry in the sidebar."
       }
     },
     "abort": {
-      "single_instance_allowed": "The heating panel is already set up."
+      "single_instance_allowed": "Heating Panel is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sidebar",
+        "data": {
+          "sidebar_title": "Title",
+          "sidebar_icon": "Icon"
+        },
+        "data_description": {
+          "sidebar_title": "Name of the sidebar entry.",
+          "sidebar_icon": "Icon of the sidebar entry."
+        }
+      }
     }
   },
   "services": {
@@ -21,7 +36,7 @@
         },
         "temperature": {
           "name": "Temperature",
-          "description": "Target temperature in °C."
+          "description": "Target temperature in the unit of your system (°C or °F)."
         }
       }
     },
@@ -45,7 +60,7 @@
         },
         "temperature": {
           "name": "Temperature",
-          "description": "Target temperature in °C."
+          "description": "Target temperature in the unit of your system (°C or °F)."
         },
         "hours": {
           "name": "Duration",

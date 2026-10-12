@@ -2,12 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "title": "Heizungssteuerung",
-        "description": "Richtet die Heizungssteuerung ein. Zonen und Zeitpläne legst du danach im Menüpunkt „Heizung“ in der Seitenleiste an."
+        "title": "Heating Panel",
+        "description": "Richtet das Heating Panel ein. Zonen und Zeitpläne legst du danach über den neuen Eintrag in der Seitenleiste an."
       }
     },
     "abort": {
-      "single_instance_allowed": "Die Heizungssteuerung ist bereits eingerichtet."
+      "single_instance_allowed": "Das Heating Panel ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Seitenleiste",
+        "data": {
+          "sidebar_title": "Titel",
+          "sidebar_icon": "Symbol"
+        },
+        "data_description": {
+          "sidebar_title": "Name des Eintrags in der Seitenleiste.",
+          "sidebar_icon": "Symbol des Eintrags in der Seitenleiste."
+        }
+      }
     }
   },
   "services": {
@@ -21,7 +36,7 @@
         },
         "temperature": {
           "name": "Temperatur",
-          "description": "Zieltemperatur in °C."
+          "description": "Zieltemperatur in der Einheit deines Systems (°C oder °F)."
         }
       }
     },
@@ -45,7 +60,7 @@
         },
         "temperature": {
           "name": "Temperatur",
-          "description": "Zieltemperatur in °C."
+          "description": "Zieltemperatur in der Einheit deines Systems (°C oder °F)."
         },
         "hours": {
           "name": "Dauer",

@@ -24,7 +24,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import SIGNAL_UPDATED
-from .model import manual_active, zone_status
+from .model import manual_active, schedule_temperatures, unit_preset, zone_status
 from .store import HeatingStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,12 +74,33 @@ class HeatingController:
     def _handle_tick(self, _now: datetime) -> None:
         self.hass.async_create_task(self.async_refresh(), eager_start=True)
 
+    @property
+    def unit(self) -> str:
+        """Temperature unit of the Home Assistant instance."""
+        return self.hass.config.units.temperature_unit
+
     def snapshot(self) -> dict[str, Any]:
-        """Return all zones with their current status for the panel."""
+        """Return all zones with their current status and the unit settings for the panel."""
         now = dt_util.now()
+        preset = unit_preset(self.unit)
         return {
-            "zones": [{**zone, "status": zone_status(zone, now)} for zone in self.store.zones]
+            "zones": [{**zone, "status": zone_status(zone, now)} for zone in self.store.zones],
+            "unit": self.unit,
+            "min_temp": preset["min"],
+            "max_temp": preset["max"],
+            "step": preset["step"],
+            "default_day": list(preset["day"]),
         }
+
+    def _check_temperatures(self, temperatures: Iterable[float]) -> None:
+        """Reject temperatures outside the limits of the configured unit."""
+        preset = unit_preset(self.unit)
+        for temperature in temperatures:
+            if not preset["min"] <= temperature <= preset["max"]:
+                raise ZoneError(
+                    "invalid_temperature",
+                    f"{temperature} {self.unit} is outside {preset['min']} to {preset['max']} {self.unit}",
+                )
 
     async def async_refresh(self, *, notify: bool = False) -> None:
         """Expire manual overrides, apply targets and notify the panel on changes."""
@@ -124,9 +145,9 @@ class HeatingController:
                     blocking=True,
                 )
             except (HomeAssistantError, vol.Invalid) as err:
-                _LOGGER.warning("Could not set %s to %s °C: %s", entity_id, temperature, err)
+                _LOGGER.warning("Could not set %s to %s %s: %s", entity_id, temperature, self.unit, err)
                 return
-            _LOGGER.debug("Set %s to %s °C", entity_id, temperature)
+            _LOGGER.debug("Set %s to %s %s", entity_id, temperature, self.unit)
         self._applied[entity_id] = target
 
     def _forget(self, entity_ids: Iterable[str]) -> None:
@@ -150,6 +171,7 @@ class HeatingController:
     async def async_save_zone(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create or update a zone."""
         zone_id = data.get("id")
+        self._check_temperatures(schedule_temperatures(data["schedule"]))
         if zone_id and self.store.get(zone_id) is None:
             raise ZoneError("zone_not_found", f"Zone {zone_id} not found")
         for other in self.store.zones:
@@ -174,6 +196,7 @@ class HeatingController:
 
     async def async_set_manual(self, zone_ids: Iterable[str], temperature: float, hours: float) -> None:
         """Override the zones with a fixed temperature for a number of hours."""
+        self._check_temperatures([temperature])
         zones = self._zones(zone_ids)
         start = dt_util.now().replace(second=0, microsecond=0)
         until = (start + timedelta(hours=hours)).isoformat()
@@ -190,6 +213,7 @@ class HeatingController:
 
     async def async_set_vacation(self, zone_ids: Iterable[str], temperature: float) -> None:
         """Hold the zones at a fixed temperature until vacation mode is switched off."""
+        self._check_temperatures([temperature])
         zones = self._zones(zone_ids)
         for zone in zones:
             zone["vacation"] = {"temperature": temperature}

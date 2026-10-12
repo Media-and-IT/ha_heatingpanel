@@ -1,0 +1,38 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Heating Panel version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.0"
+    validations:
+      required: true
+  - type: input
+    id: thermostats
+    attributes:
+      label: Thermostat integration and model
+      description: For example Zigbee2MQTT with a Danfoss Ally, or Homematic IP.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Enable debug logging under Settings, Devices & services, Heating Panel, then reproduce the problem.
+        Paste the relevant lines of the log here.
+      render: text

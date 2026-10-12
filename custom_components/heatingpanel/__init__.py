@@ -8,7 +8,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from . import services, websocket
-from .const import DOMAIN
+from .config_flow import default_sidebar_title
+from .const import CONF_SIDEBAR_ICON, CONF_SIDEBAR_TITLE, DOMAIN, PANEL_ICON
 from .controller import HeatingController
 from .panel import async_register_panel, async_unregister_panel
 from .store import HeatingStore
@@ -30,8 +31,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     controller = HeatingController(hass, store)
     hass.data[DOMAIN] = controller
     await controller.async_start()
-    await async_register_panel(hass)
+    await async_register_panel(
+        hass,
+        entry.options.get(CONF_SIDEBAR_TITLE) or default_sidebar_title(hass),
+        entry.options.get(CONF_SIDEBAR_ICON) or PANEL_ICON,
+    )
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload to show the new sidebar title and icon."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

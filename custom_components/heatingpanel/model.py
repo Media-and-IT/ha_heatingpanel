@@ -11,42 +11,53 @@ import voluptuous as vol
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ABSOLUTE_MAX_TEMP,
+    ABSOLUTE_MIN_TEMP,
     DAY_MINUTES,
     DAY_START_MINUTES,
     DAYS,
-    MAX_TEMP,
-    MIN_TEMP,
     MODE_MANUAL,
     MODE_SCHEDULE,
     MODE_VACATION,
     SEGMENTS,
     STEP_MINUTES,
     TEMP_STEP,
+    UNIT_PRESETS,
 )
 
 
+def unit_preset(unit: str) -> dict[str, Any]:
+    """Return limits and defaults for a temperature unit (°C unless °F)."""
+    return UNIT_PRESETS.get(unit, UNIT_PRESETS["°C"])
+
+
 def round_temperature(value: float) -> float:
-    """Round a temperature to the configured step (0.5 °C)."""
+    """Round a temperature to half a degree."""
     return round(round(float(value) / TEMP_STEP) * TEMP_STEP, 1)
 
 
 def valid_temperature(value: Any) -> float:
-    """Voluptuous validator for a target temperature."""
+    """Voluptuous validator for a target temperature in either unit."""
     temperature = round_temperature(vol.Coerce(float)(value))
-    if not MIN_TEMP <= temperature <= MAX_TEMP:
-        raise vol.Invalid(f"temperature must be between {MIN_TEMP} and {MAX_TEMP}")
+    if not ABSOLUTE_MIN_TEMP <= temperature <= ABSOLUTE_MAX_TEMP:
+        raise vol.Invalid(f"temperature must be between {ABSOLUTE_MIN_TEMP} and {ABSOLUTE_MAX_TEMP}")
     return temperature
 
 
-def default_day() -> dict[str, list]:
+def default_day(unit: str = "°C") -> dict[str, list]:
     """Return the schedule for a single day of a new zone."""
     # 07:00, 09:00, 15:00 and 21:00 as offsets from the 05:00 day start.
-    return {"bounds": [120, 240, 600, 960], "temps": [19.0, 20.0, 19.0, 20.0, 19.0]}
+    return {"bounds": [120, 240, 600, 960], "temps": list(unit_preset(unit)["day"])}
 
 
-def default_schedule() -> dict[str, dict[str, list]]:
+def default_schedule(unit: str = "°C") -> dict[str, dict[str, list]]:
     """Return the weekly schedule for a new zone."""
-    return {day: default_day() for day in DAYS}
+    return {day: default_day(unit) for day in DAYS}
+
+
+def schedule_temperatures(schedule: dict[str, dict[str, list]]) -> set[float]:
+    """Return every temperature used in a weekly schedule."""
+    return {temp for day in schedule.values() for temp in day["temps"]}
 
 
 def validate_day(value: Any) -> dict[str, list]:

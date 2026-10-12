@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+import voluptuous as vol
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
@@ -17,6 +19,7 @@ class HeatingStore:
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the store."""
+        self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.zones: list[dict[str, Any]] = []
 
@@ -58,13 +61,12 @@ class HeatingStore:
             self.zones.remove(zone)
         return zone
 
-    @staticmethod
-    def _sanitize(zone: dict[str, Any]) -> dict[str, Any]:
+    def _sanitize(self, zone: dict[str, Any]) -> dict[str, Any]:
         """Fill in missing keys of a stored zone."""
         try:
             schedule = validate_schedule(zone.get("schedule"))
-        except Exception:  # noqa: BLE001 - a broken schedule falls back to the default
-            schedule = default_schedule()
+        except vol.Invalid:
+            schedule = default_schedule(self.hass.config.units.temperature_unit)
         return {
             "id": zone.get("id") or uuid4().hex,
             "name": zone.get("name") or "Zone",

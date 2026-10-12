@@ -6,29 +6,186 @@
 const DOMAIN = "heatingpanel";
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const WORKDAYS = DAYS.slice(0, 5);
-const DAY_SHORT = { mon: "Mo", tue: "Di", wed: "Mi", thu: "Do", fri: "Fr", sat: "Sa", sun: "So" };
-const DAY_LONG = {
-  mon: "Montag",
-  tue: "Dienstag",
-  wed: "Mittwoch",
-  thu: "Donnerstag",
-  fri: "Freitag",
-  sat: "Samstag",
-  sun: "Sonntag",
-};
 // Must match const.py: a schedule day runs from 05:00 to 05:00.
 const DAY_START = 5 * 60;
 const DAY_MINUTES = 24 * 60;
 const STEP = 15;
-const TEMPERATURES = Array.from({ length: 53 }, (_, i) => 4 + i * 0.5);
 const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
-const MODES = {
-  schedule: { label: "Zeitplan-Modus", icon: "mdi:calendar-month-outline" },
-  manual: { label: "Manueller Modus", icon: "mdi:hand-pointing-up" },
-  vacation: { label: "Urlaubsmodus", icon: "mdi:airplane" },
+const MODE_ICONS = {
+  schedule: "mdi:calendar-month-outline",
+  manual: "mdi:hand-pointing-up",
+  vacation: "mdi:airplane",
 };
-const DEFAULT_DAY = { bounds: [120, 240, 600, 960], temps: [19, 20, 19, 20, 19] };
+const DEFAULT_BOUNDS = [120, 240, 600, 960];
 const ARROWS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 7 5.5 12l5 5zM13.5 7l5 5-5 5z"/></svg>';
+
+const STRINGS = {
+  en: {
+    title: "Heating control",
+    not_loaded: "The integration is not loaded.",
+    unreachable: "Heating Panel is not available: {error}",
+    loading: "Loading zones …",
+    no_zones: "No zones yet. Use “Add zone” to create your first zone and assign thermostats to it.",
+    add_zone: "Add zone",
+    mode_schedule: "Schedule",
+    mode_manual: "Manual mode",
+    mode_vacation: "Vacation mode",
+    manual_text: "Manual mode sets the temperature of the selected zones for a number of hours.",
+    vacation_text: "Vacation mode holds the selected zones at one temperature until you switch it off.",
+    configure: "Configure",
+    temperature: "Temperature:",
+    duration: "For:",
+    zones_selected: "{count} of {total} zones selected",
+    turn_on: "Turn on",
+    cancel: "Cancel",
+    manual_until: "Manual until {time}",
+    no_thermostats: "No thermostats assigned",
+    thermostats_unavailable: "{count} of {total} thermostats unavailable",
+    end_manual: "End manual mode",
+    end_vacation: "End vacation mode",
+    off: "OFF",
+    manage: "Manage",
+    current: "Current {temp}",
+    zone_name: "Zone name",
+    rename: "Rename",
+    thermostats: "Thermostats ({count})",
+    delete: "Delete",
+    save: "Save",
+    unsaved: "Unsaved changes",
+    week: "Week",
+    week_hint: "Shifts a time boundary on all days by the same amount.",
+    zone_thermostats: "Thermostats in this zone",
+    search: "Search",
+    in_zone: "in zone “{zone}”",
+    not_found: "not found",
+    no_climate: "No thermostats (climate entities) found.",
+    manual_active: "Manual mode active: {temp} until {time}",
+    turn_off: "turn off",
+    manual_is_off: "Manual mode is off",
+    after_first_save: "Available after the zone has been saved.",
+    no_selection: "no selection",
+    switch_on: "turn on",
+    vacation_active: "Vacation mode active: {temp}",
+    afterwards: " (afterwards)",
+    night: "Night",
+    range_label: "{day}, {from} to {to}",
+    expand: "Expand {day}",
+    collapse: "Collapse {day}",
+    boundary: "{name}, boundary {number}",
+    select_days: "Select days",
+    whole_week: "Whole week",
+    workdays: "Workdays",
+    copy_to: "Copy to:",
+    copy: "Copy",
+    toast_manual_on: "Manual mode turned on",
+    toast_vacation_on: "Vacation mode turned on",
+    toast_manual_off: "Manual mode turned off",
+    toast_vacation_off: "Vacation mode turned off",
+    new_zone: "New zone",
+    confirm_discard: "Discard unsaved changes?",
+    confirm_delete: "Really delete zone “{name}”? The thermostats keep their last temperature.",
+    toast_deleted: "Zone deleted",
+    toast_copied: "{day} copied to {targets}",
+    name_required: "Please enter a name.",
+    toast_saved: "“{name}” saved",
+    days_short: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    days_long: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  },
+  de: {
+    title: "Heizungssteuerung",
+    not_loaded: "Die Integration ist nicht geladen.",
+    unreachable: "Die Heizungssteuerung ist nicht erreichbar: {error}",
+    loading: "Lade Zonen …",
+    no_zones: "Noch keine Zonen angelegt. Lege mit „Zone hinzufügen“ deine erste Zone an und weise ihr Thermostate zu.",
+    add_zone: "Zone hinzufügen",
+    mode_schedule: "Zeitplan-Modus",
+    mode_manual: "Manueller Modus",
+    mode_vacation: "Urlaubsmodus",
+    manual_text: "Der manuelle Modus ermöglicht es, die Temperatur in jeder Zone für eine bestimmte Anzahl an Stunden anzupassen.",
+    vacation_text: "Der Urlaubsmodus ermöglicht es, die Temperatur Ihres Zuhauses von unterwegs aus in jeder Zone anzupassen.",
+    configure: "Konfigurieren",
+    temperature: "Temperatur:",
+    duration: "Für:",
+    zones_selected: "{count} von {total} Zonen ausgewählt",
+    turn_on: "Einschalten",
+    cancel: "Abbrechen",
+    manual_until: "Manuell bis {time}",
+    no_thermostats: "Keine Thermostate zugewiesen",
+    thermostats_unavailable: "{count} von {total} Thermostaten nicht erreichbar",
+    end_manual: "Manuellen Modus beenden",
+    end_vacation: "Urlaubsmodus beenden",
+    off: "OFF",
+    manage: "Verwalten",
+    current: "Ist {temp}",
+    zone_name: "Name der Zone",
+    rename: "Umbenennen",
+    thermostats: "Thermostate ({count})",
+    delete: "Löschen",
+    save: "Speichern",
+    unsaved: "Ungespeicherte Änderungen",
+    week: "Woche",
+    week_hint: "Verschiebt eine Zeitgrenze an allen Tagen gleichzeitig um denselben Betrag.",
+    zone_thermostats: "Thermostate dieser Zone",
+    search: "Suchen",
+    in_zone: "in Zone „{zone}“",
+    not_found: "nicht gefunden",
+    no_climate: "Keine Thermostate (climate-Entitäten) gefunden.",
+    manual_active: "Manueller Modus aktiv: {temp} bis {time}",
+    turn_off: "ausschalten",
+    manual_is_off: "Der manuelle Modus ist ausgeschaltet",
+    after_first_save: "Nach dem ersten Speichern verfügbar.",
+    no_selection: "keine Auswahl",
+    switch_on: "einschalten",
+    vacation_active: "Urlaubsmodus aktiv: {temp}",
+    afterwards: " (danach)",
+    night: "Nacht",
+    range_label: "{day}, {from} bis {to}",
+    expand: "{day} aufklappen",
+    collapse: "{day} zuklappen",
+    boundary: "{name}, Grenze {number}",
+    select_days: "Tage auswählen",
+    whole_week: "Die ganze Woche",
+    workdays: "Arbeitstage",
+    copy_to: "Kopieren für:",
+    copy: "Kopieren",
+    toast_manual_on: "Manueller Modus eingeschaltet",
+    toast_vacation_on: "Urlaubsmodus eingeschaltet",
+    toast_manual_off: "Manueller Modus ausgeschaltet",
+    toast_vacation_off: "Urlaubsmodus ausgeschaltet",
+    new_zone: "Neue Zone",
+    confirm_discard: "Ungespeicherte Änderungen verwerfen?",
+    confirm_delete: "Zone „{name}“ wirklich löschen? Die Thermostate behalten ihre letzte Temperatur.",
+    toast_deleted: "Zone gelöscht",
+    toast_copied: "{day} auf {targets} kopiert",
+    name_required: "Bitte einen Namen vergeben.",
+    toast_saved: "„{name}“ gespeichert",
+    days_short: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    days_long: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
+  },
+};
+
+// Language of the user and temperature unit of the instance, updated from hass and the subscription.
+const i18n = { lang: "en", locale: "en" };
+const units = { unit: "°C", min: 4, max: 30, step: 0.5, defaultDay: [19, 20, 19, 20, 19] };
+
+/** Take the language from the user profile. Returns true when it changed. */
+function setLanguage(hass) {
+  const locale = hass.locale?.language || hass.language || "en";
+  const base = locale.split("-")[0];
+  const lang = STRINGS[base] ? base : "en";
+  const changed = lang !== i18n.lang || locale !== i18n.locale;
+  i18n.lang = lang;
+  i18n.locale = locale;
+  return changed;
+}
+
+function t(key, params = {}) {
+  const text = STRINGS[i18n.lang][key] ?? STRINGS.en[key] ?? key;
+  return text.replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? ""));
+}
+
+const dayShort = (day) => STRINGS[i18n.lang].days_short[DAYS.indexOf(day)];
+const dayLong = (day) => STRINGS[i18n.lang].days_long[DAYS.indexOf(day)];
 
 const esc = (value) =>
   String(value ?? "").replace(
@@ -37,9 +194,27 @@ const esc = (value) =>
   );
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const pct = (minutes) => (minutes / DAY_MINUTES) * 100;
-const fmtTemp = (t) =>
-  t == null || Number.isNaN(Number(t)) ? "--,-°C" : `${Number(t).toFixed(1).replace(".", ",")}°C`;
-const tempClass = (t) => (t < 17 ? "cold" : t >= 22 ? "hot" : "ok");
+
+function fmtTemp(value) {
+  if (value == null || Number.isNaN(Number(value))) return `--${units.unit}`;
+  const digits = units.step < 1 ? 1 : 0;
+  const number = Number(value).toLocaleString(i18n.locale, { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+  return `${number}${units.unit}`;
+}
+
+/** Colour of a period: cold below 17 °C, hot from 22 °C. */
+function tempClass(value) {
+  const celsius = units.unit === "°F" ? ((value - 32) * 5) / 9 : value;
+  return celsius < 17 ? "cold" : celsius >= 22 ? "hot" : "ok";
+}
+
+/** Choice of temperatures for the selects, plus a stored value that is off the grid. */
+function temperatures(current) {
+  const list = [];
+  for (let value = units.min; value <= units.max + 1e-9; value += units.step) list.push(Math.round(value * 10) / 10);
+  if (current != null && !list.includes(current)) list.push(current);
+  return list.sort((a, b) => a - b);
+}
 
 /** Clock time of a minute offset within a schedule day. */
 function clock(offset, pad = true) {
@@ -50,9 +225,9 @@ function clock(offset, pad = true) {
 
 function fmtUntil(iso) {
   const date = new Date(iso);
-  const time = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString(i18n.locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   if (date.toDateString() === new Date().toDateString()) return time;
-  return `${date.toLocaleDateString("de-DE", { weekday: "short" })} ${time}`;
+  return `${date.toLocaleDateString(i18n.locale, { weekday: "short" })} ${time}`;
 }
 
 /** Keep a bound between its neighbours with at least one step per period. */
@@ -63,10 +238,10 @@ function clampBound(bounds, idx, value) {
 }
 
 function tempSelect(change, value, attrs = "", allowNone = false) {
-  const none = allowNone ? `<option value="" ${value == null ? "selected" : ""}>keine Auswahl</option>` : "";
-  const options = TEMPERATURES.map(
-    (t) => `<option value="${t}" ${t === value ? "selected" : ""}>${fmtTemp(t)}</option>`,
-  ).join("");
+  const none = allowNone ? `<option value="" ${value == null ? "selected" : ""}>${t("no_selection")}</option>` : "";
+  const options = temperatures(value)
+    .map((temp) => `<option value="${temp}" ${temp === value ? "selected" : ""}>${fmtTemp(temp)}</option>`)
+    .join("");
   return `<select class="select" data-change="${change}" ${attrs}>${none}${options}</select>`;
 }
 
@@ -108,7 +283,7 @@ class HeatingPanel extends HTMLElement {
 
     const root = this.attachShadow({ mode: "open" });
     root.innerHTML = `<style>${STYLE}</style>
-      <div class="toolbar"><span class="menu"></span><div class="title">Heizungssteuerung</div></div>
+      <div class="toolbar"><span class="menu"></span><div class="title"></div></div>
       <div class="content"></div>
       <div class="toast" hidden></div>`;
     this._menuButton = document.createElement("ha-menu-button");
@@ -130,8 +305,9 @@ class HeatingPanel extends HTMLElement {
     this._hass = hass;
     this._menuButton.hass = hass;
     this._subscribe();
+    const languageChanged = setLanguage(hass);
     const signature = this._climateSignature();
-    if (signature !== this._signature) {
+    if (languageChanged || signature !== this._signature) {
       this._signature = signature;
       this._requestRender();
     }
@@ -173,13 +349,20 @@ class HeatingPanel extends HTMLElement {
     this._unsubPromise = this._hass.connection.subscribeMessage(
       (msg) => {
         this._zones = msg.zones;
+        Object.assign(units, {
+          unit: msg.unit ?? units.unit,
+          min: msg.min_temp ?? units.min,
+          max: msg.max_temp ?? units.max,
+          step: msg.step ?? units.step,
+          defaultDay: msg.default_day ?? units.defaultDay,
+        });
         this._requestRender();
       },
       { type: `${DOMAIN}/subscribe` },
     );
     this._unsubPromise.catch((err) => {
       this._unsubPromise = null;
-      this._loadError = err?.message || "Die Integration ist nicht geladen.";
+      this._loadError = err?.message || t("not_loaded");
       this._render();
     });
   }
@@ -206,13 +389,13 @@ class HeatingPanel extends HTMLElement {
         name: states[id].attributes.friendly_name || id,
         current: states[id].attributes.current_temperature,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name, "de"));
+      .sort((a, b) => a.name.localeCompare(b.name, i18n.locale));
   }
 
   _currentTemp(zone) {
     const values = zone.entities
       .map((id) => this._hass?.states[id]?.attributes.current_temperature)
-      .filter((t) => typeof t === "number");
+      .filter((value) => typeof value === "number");
     return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   }
 
@@ -272,12 +455,13 @@ class HeatingPanel extends HTMLElement {
     this._pendingRender = false;
     const content = this.shadowRoot.querySelector(".content");
     if (!this._hass) return;
+    this.shadowRoot.querySelector(".toolbar .title").textContent = t("title");
     if (this._loadError) {
-      content.innerHTML = `<div class="card"><div class="empty">Die Heizungssteuerung ist nicht erreichbar: ${esc(this._loadError)}</div></div>`;
+      content.innerHTML = `<div class="card"><div class="empty">${esc(t("unreachable", { error: this._loadError }))}</div></div>`;
       return;
     }
     if (this._zones === null) {
-      content.innerHTML = `<div class="card"><div class="empty">Lade Zonen …</div></div>`;
+      content.innerHTML = `<div class="card"><div class="empty">${t("loading")}</div></div>`;
       return;
     }
     content.innerHTML = this._view === "edit" && this._draft ? this._renderEditor() : this._renderList();
@@ -295,46 +479,44 @@ class HeatingPanel extends HTMLElement {
     const zones = this._zones;
     const rows = zones.length
       ? zones.map((zone) => this._renderZoneRow(zone)).join("")
-      : `<div class="empty">Noch keine Zonen angelegt. Lege mit „Zone hinzufügen“ deine erste Zone an und weise ihr Thermostate zu.</div>`;
+      : `<div class="empty">${esc(t("no_zones"))}</div>`;
     return `<div class="card">
       <div class="modes">${this._renderModeCard("manual")}${this._renderModeCard("vacation")}</div>
       <div class="zones">${rows}</div>
-      <div class="center"><button class="btn pill" data-action="add-zone">Zone hinzufügen</button></div>
+      <div class="center"><button class="btn pill" data-action="add-zone">${t("add_zone")}</button></div>
     </div>`;
   }
 
   _renderModeCard(type) {
     const manual = type === "manual";
-    const title = manual ? "Manueller Modus" : "Urlaubsmodus";
-    const icon = MODES[type].icon;
+    const title = t(`mode_${type}`);
+    const icon = MODE_ICONS[type];
     const config = this._config?.type === type ? this._config : null;
     if (!config) {
-      const text = manual
-        ? "Der manuelle Modus ermöglicht es, die Temperatur in jeder Zone für eine bestimmte Anzahl an Stunden anzupassen."
-        : "Der Urlaubsmodus ermöglicht es, die Temperatur Ihres Zuhauses von unterwegs aus in jeder Zone anzupassen.";
+      const text = t(manual ? "manual_text" : "vacation_text");
       return `<div class="mode-card">
         <ha-icon class="big-icon" icon="${icon}"></ha-icon>
         <div class="mode-body">
           <div class="mode-title">${title}</div>
           <div class="mode-text">${text}</div>
           <div class="mode-actions">
-            <button class="btn pill" data-action="open-config" data-type="${type}" ${this._zones.length ? "" : "disabled"}>Konfigurieren</button>
+            <button class="btn pill" data-action="open-config" data-type="${type}" ${this._zones.length ? "" : "disabled"}>${t("configure")}</button>
           </div>
         </div>
       </div>`;
     }
     const hours = manual
-      ? `<label class="form-label">Für:</label>${hoursSelect("cfg-hours", config.hours)}`
+      ? `<label class="form-label">${t("duration")}</label>${hoursSelect("cfg-hours", config.hours)}`
       : "";
     return `<div class="mode-card active">
       <ha-icon class="big-icon" icon="${icon}"></ha-icon>
       <div class="mode-body">
         <div class="mode-title">${title}</div>
-        <div class="form-grid"><label class="form-label">Temperatur:</label>${tempSelect("cfg-temp", config.temperature)}${hours}</div>
-        <div class="mode-hint">${config.selected.size} von ${this._zones.length} Zonen ausgewählt</div>
+        <div class="form-grid"><label class="form-label">${t("temperature")}</label>${tempSelect("cfg-temp", config.temperature)}${hours}</div>
+        <div class="mode-hint">${t("zones_selected", { count: config.selected.size, total: this._zones.length })}</div>
         <div class="mode-actions">
-          <button class="btn pill" data-action="apply-config" ${config.selected.size ? "" : "disabled"}>Einschalten</button>
-          <button class="btn pill outline" data-action="cancel-config">Abbrechen</button>
+          <button class="btn pill" data-action="apply-config" ${config.selected.size ? "" : "disabled"}>${t("turn_on")}</button>
+          <button class="btn pill outline" data-action="cancel-config">${t("cancel")}</button>
         </div>
       </div>
     </div>`;
@@ -342,13 +524,12 @@ class HeatingPanel extends HTMLElement {
 
   _renderZoneRow(zone) {
     const status = zone.status;
-    const mode = MODES[status.mode];
-    const label = status.mode === "manual" ? `Manuell bis ${fmtUntil(status.until)}` : mode.label;
+    const label = status.mode === "manual" ? t("manual_until", { time: fmtUntil(status.until) }) : t(`mode_${status.mode}`);
     const current = this._currentTemp(zone);
     const unavailable = this._unavailable(zone);
     let warning = "";
-    if (!zone.entities.length) warning = "Keine Thermostate zugewiesen";
-    else if (unavailable) warning = `${unavailable} von ${zone.entities.length} Thermostaten nicht erreichbar`;
+    if (!zone.entities.length) warning = t("no_thermostats");
+    else if (unavailable) warning = t("thermostats_unavailable", { count: unavailable, total: zone.entities.length });
 
     let actions;
     if (this._config) {
@@ -357,13 +538,13 @@ class HeatingPanel extends HTMLElement {
       const off =
         status.mode === "schedule"
           ? ""
-          : `<button class="btn off" data-action="clear-override" data-zone="${esc(zone.id)}" title="${status.mode === "manual" ? "Manuellen Modus beenden" : "Urlaubsmodus beenden"}">OFF</button>`;
-      actions = `${off}<button class="btn small blue" data-action="manage" data-zone="${esc(zone.id)}">Verwalten</button>`;
+          : `<button class="btn off" data-action="clear-override" data-zone="${esc(zone.id)}" title="${t(status.mode === "manual" ? "end_manual" : "end_vacation")}">${t("off")}</button>`;
+      actions = `${off}<button class="btn small blue" data-action="manage" data-zone="${esc(zone.id)}">${t("manage")}</button>`;
     }
     return `<div class="zone-row">
       <div class="zone-name">${esc(zone.name)}${warning ? `<span class="warn">${esc(warning)}</span>` : ""}</div>
-      <div class="zone-temp"><span class="target">${fmtTemp(status.target)}</span>${current != null ? `<span class="current">Ist ${fmtTemp(current)}</span>` : ""}</div>
-      <div class="zone-mode"><ha-icon icon="${mode.icon}"></ha-icon><span>${esc(label)}</span></div>
+      <div class="zone-temp"><span class="target">${fmtTemp(status.target)}</span>${current != null ? `<span class="current">${t("current", { temp: fmtTemp(current) })}</span>` : ""}</div>
+      <div class="zone-mode"><ha-icon icon="${MODE_ICONS[status.mode]}"></ha-icon><span>${esc(label)}</span></div>
       <div class="zone-actions">${actions}</div>
     </div>`;
   }
@@ -372,19 +553,19 @@ class HeatingPanel extends HTMLElement {
     const draft = this._draft;
     const live = draft.id ? this._zone(draft.id) : null;
     const title = this._editingName
-      ? `<input class="name-input" data-input="name" value="${esc(draft.name)}" maxlength="64" aria-label="Name der Zone">`
-      : `<h1>${esc(draft.name)}</h1><button class="icon-btn" data-action="edit-name" title="Umbenennen"><ha-icon icon="mdi:pencil"></ha-icon></button>`;
+      ? `<input class="name-input" data-input="name" value="${esc(draft.name)}" maxlength="64" aria-label="${t("zone_name")}">`
+      : `<h1>${esc(draft.name)}</h1><button class="icon-btn" data-action="edit-name" title="${t("rename")}"><ha-icon icon="mdi:pencil"></ha-icon></button>`;
     return `<div class="card editor">
       <div class="ed-head">
         <div class="ed-title">${title}</div>
         <div class="ed-buttons">
-          <button class="btn small blue ${this._showEntities ? "pressed" : ""}" data-action="toggle-entities">Thermostate (${draft.entities.length})</button>
-          <button class="btn small gray" data-action="cancel-edit">Abbrechen</button>
-          ${draft.id ? `<button class="btn small red" data-action="delete-zone">Löschen</button>` : ""}
-          <button class="btn small green" data-action="save-zone">Speichern</button>
+          <button class="btn small blue ${this._showEntities ? "pressed" : ""}" data-action="toggle-entities">${t("thermostats", { count: draft.entities.length })}</button>
+          <button class="btn small gray" data-action="cancel-edit">${t("cancel")}</button>
+          ${draft.id ? `<button class="btn small red" data-action="delete-zone">${t("delete")}</button>` : ""}
+          <button class="btn small green" data-action="save-zone">${t("save")}</button>
         </div>
       </div>
-      ${this._dirty() ? `<div class="dirty">Ungespeicherte Änderungen</div>` : ""}
+      ${this._dirty() ? `<div class="dirty">${t("unsaved")}</div>` : ""}
       ${this._showEntities ? this._renderEntities() : ""}
       ${this._renderOverrides(live)}
       <div class="schedule">
@@ -392,11 +573,11 @@ class HeatingPanel extends HTMLElement {
         <div class="grid-row axis-row"><span></span>${this._renderAxis()}<span></span></div>
         <div class="day week">
           <div class="grid-row">
-            <div class="day-label">Woche</div>
+            <div class="day-label">${t("week")}</div>
             ${this._renderBar("week", this._weekBounds, null)}
             <span></span>
           </div>
-          <div class="week-hint">Verschiebt eine Zeitgrenze an allen Tagen gleichzeitig um denselben Betrag.</div>
+          <div class="week-hint">${t("week_hint")}</div>
         </div>
       </div>
     </div>`;
@@ -412,8 +593,8 @@ class HeatingPanel extends HTMLElement {
         const owner = this._zones.find((zone) => zone.id !== draft.id && zone.entities.includes(entity.id));
         const checked = draft.entities.includes(entity.id);
         let info = entity.id;
-        if (owner) info += ` · in Zone „${owner.name}“`;
-        if (entity.missing) info += " · nicht gefunden";
+        if (owner) info += ` · ${t("in_zone", { zone: owner.name })}`;
+        if (entity.missing) info += ` · ${t("not_found")}`;
         return `<label class="entity ${owner ? "taken" : ""}" data-search="${esc(`${entity.name} ${entity.id}`.toLowerCase())}">
           ${checkbox(`data-change="toggle-entity" data-entity="${esc(entity.id)}"`, checked, Boolean(owner))}
           <span class="entity-text"><span class="entity-name">${esc(entity.name)}</span><span class="entity-id">${esc(info)}</span></span>
@@ -423,10 +604,10 @@ class HeatingPanel extends HTMLElement {
       .join("");
     return `<div class="box entities">
       <div class="box-head">
-        <span>Thermostate dieser Zone</span>
-        <input type="search" class="search" placeholder="Suchen" data-input="entity-filter" value="${esc(this._entityFilter)}">
+        <span>${t("zone_thermostats")}</span>
+        <input type="search" class="search" placeholder="${t("search")}" data-input="entity-filter" value="${esc(this._entityFilter)}">
       </div>
-      ${rows ? `<div class="entity-list">${rows}</div>` : `<div class="empty">Keine Thermostate (climate-Entitäten) gefunden.</div>`}
+      ${rows ? `<div class="entity-list">${rows}</div>` : `<div class="empty">${t("no_climate")}</div>`}
     </div>`;
   }
 
@@ -443,30 +624,30 @@ class HeatingPanel extends HTMLElement {
     let manual;
     if (manualOn) {
       manual = `<div class="box-line">
-        <span>Manueller Modus aktiv: <b>${fmtTemp(live.status.target)}</b> bis ${fmtUntil(live.status.until)}</span>
-        <button class="btn small gray" data-action="manual-off">ausschalten</button>
+        <span>${t("manual_active", { temp: `<b>${fmtTemp(live.status.target)}</b>`, time: fmtUntil(live.status.until) })}</span>
+        <button class="btn small gray" data-action="manual-off">${t("turn_off")}</button>
       </div>`;
     } else {
       const form = this._manualForm;
       manual = `<div class="box-line">
-        <span>Der manuelle Modus ist ausgeschaltet</span>
-        <button class="link" data-action="toggle-manual-form" ${draft.id ? "" : "disabled"}>Konfigurieren <span class="caret ${form ? "down" : ""}"></span></button>
+        <span>${t("manual_is_off")}</span>
+        <button class="link" data-action="toggle-manual-form" ${draft.id ? "" : "disabled"}>${t("configure")} <span class="caret ${form ? "down" : ""}"></span></button>
       </div>
-      ${draft.id ? "" : `<div class="muted small">Nach dem ersten Speichern verfügbar.</div>`}
+      ${draft.id ? "" : `<div class="muted small">${t("after_first_save")}</div>`}
       ${
         form
           ? `<div class="manual-form">
-              <label class="form-label">Temperatur:</label>${tempSelect("manual-temp", form.temperature, "", true)}
-              <label class="form-label">Für:</label>${hoursSelect("manual-hours", form.hours)}
-              <button class="btn small gray" data-action="manual-on" ${form.temperature == null ? "disabled" : ""}>einschalten</button>
+              <label class="form-label">${t("temperature")}</label>${tempSelect("manual-temp", form.temperature, "", true)}
+              <label class="form-label">${t("duration")}</label>${hoursSelect("manual-hours", form.hours)}
+              <button class="btn small gray" data-action="manual-on" ${form.temperature == null ? "disabled" : ""}>${t("switch_on")}</button>
             </div>`
           : ""
       }`;
     }
     const vacation = live?.vacation
       ? `<div class="box-line vacation">
-          <span><ha-icon icon="${MODES.vacation.icon}"></ha-icon> Urlaubsmodus aktiv: <b>${fmtTemp(live.vacation.temperature)}</b>${manualOn ? " (danach)" : ""}</span>
-          <button class="btn small gray" data-action="vacation-off">ausschalten</button>
+          <span><ha-icon icon="${MODE_ICONS.vacation}"></ha-icon> ${t("vacation_active", { temp: `<b>${fmtTemp(live.vacation.temperature)}</b>` })}${manualOn ? t("afterwards") : ""}</span>
+          <button class="btn small gray" data-action="vacation-off">${t("turn_off")}</button>
         </div>`
       : "";
     return `<div class="box">${manual}${vacation}</div>`;
@@ -478,14 +659,14 @@ class HeatingPanel extends HTMLElement {
     let details = "";
     if (open) {
       const edges = [0, ...entry.bounds, DAY_MINUTES];
-      const field = (label, idx, t, from, to) => `<label class="temp-field">
-          <span class="muted">${label}${clock(from)}–${clock(to)}</span>
-          ${tempSelect("seg-temp", t, `data-day="${day}" data-idx="${idx}" aria-label="${DAY_LONG[day]} ${label}${clock(from)} bis ${clock(to)}"`)}
+      const field = (prefix, idx, temp, from, to) => `<label class="temp-field">
+          <span class="muted">${prefix}${clock(from)}–${clock(to)}</span>
+          ${tempSelect("seg-temp", temp, `data-day="${day}" data-idx="${idx}" aria-label="${esc(t("range_label", { day: dayLong(day), from: prefix + clock(from), to: clock(to) }))}"`)}
         </label>`;
       // First and last period are the night around the 05:00 day start and share one temperature.
       const temps =
         [1, 2, 3].map((i) => field("", i, entry.temps[i], edges[i], edges[i + 1])).join("") +
-        field("Nacht ", "night", entry.temps[4], edges[4], edges[1]);
+        field(`${t("night")} `, "night", entry.temps[4], edges[4], edges[1]);
       details = `<div class="day-details">
         <div class="grid-row axis-row"><span></span>${this._renderAxis()}<span></span></div>
         <div class="temps">${temps}</div>
@@ -494,9 +675,9 @@ class HeatingPanel extends HTMLElement {
     }
     return `<div class="day ${open ? "open" : ""}">
       <div class="grid-row">
-        <button class="day-label" data-action="toggle-day" data-day="${day}">${DAY_SHORT[day]}</button>
+        <button class="day-label" data-action="toggle-day" data-day="${day}">${dayShort(day)}</button>
         ${this._renderBar(day, entry.bounds, entry.temps)}
-        <button class="day-toggle" data-action="toggle-day" data-day="${day}" aria-label="${DAY_LONG[day]} ${open ? "zuklappen" : "aufklappen"}"><span class="caret ${open ? "down" : ""}"></span></button>
+        <button class="day-toggle" data-action="toggle-day" data-day="${day}" aria-label="${t(open ? "collapse" : "expand", { day: dayLong(day) })}"><span class="caret ${open ? "down" : ""}"></span></button>
       </div>
       ${details}
     </div>`;
@@ -510,15 +691,15 @@ class HeatingPanel extends HTMLElement {
         const end = edges[i + 1];
         const style = `left:${pct(start)}%;width:${pct(end - start)}%`;
         if (!temps) return `<div class="seg w${i}" style="${style}"></div>`;
-        const t = temps[i];
-        return `<div class="seg ${tempClass(t)}" style="${style}" title="${clock(start)}–${clock(end)}: ${fmtTemp(t)}"><span>${fmtTemp(t)}</span></div>`;
+        const temp = temps[i];
+        return `<div class="seg ${tempClass(temp)}" style="${style}" title="${clock(start)}–${clock(end)}: ${fmtTemp(temp)}"><span>${fmtTemp(temp)}</span></div>`;
       })
       .join("");
-    const name = day === "week" ? "Woche" : DAY_LONG[day];
+    const name = day === "week" ? t("week") : dayLong(day);
     const handles = bounds
       .map(
         (bound, i) => `<div class="handle" data-handle="${day}:${i}" style="left:${pct(bound)}%" tabindex="0" role="slider"
-          aria-label="${name}, Grenze ${i + 1}" aria-valuetext="${clock(bound)}">${ARROWS}<span class="bubble">${clock(bound)}</span></div>`,
+          aria-label="${t("boundary", { name, number: i + 1 })}" aria-valuetext="${clock(bound)}">${ARROWS}<span class="bubble">${clock(bound)}</span></div>`,
       )
       .join("");
     return `<div class="bar ${temps ? "" : "week-bar"}" data-bar="${day}"><div class="track">${segments}</div>${handles}</div>`;
@@ -556,22 +737,22 @@ class HeatingPanel extends HTMLElement {
     const option = (key, text, checked) =>
       `<label class="copy-option">${checkbox(`data-change="copy-target" data-key="${key}" data-day="${day}"`, checked)}<span>${text}</span></label>`;
     const label = selected.size
-      ? DAYS.filter((d) => selected.has(d)).map((d) => DAY_SHORT[d]).join(", ")
-      : "Tage auswählen";
+      ? DAYS.filter((d) => selected.has(d)).map(dayShort).join(", ")
+      : t("select_days");
     const menu = this._copyOpen
       ? `<div class="copy-menu">
-          ${option("week", "Die ganze Woche", others.every((d) => selected.has(d)))}
-          ${option("workdays", "Arbeitstage", workdays.every((d) => selected.has(d)))}
-          ${others.map((d) => option(d, DAY_LONG[d], selected.has(d))).join("")}
+          ${option("week", t("whole_week"), others.every((d) => selected.has(d)))}
+          ${option("workdays", t("workdays"), workdays.every((d) => selected.has(d)))}
+          ${others.map((d) => option(d, dayLong(d), selected.has(d))).join("")}
         </div>`
       : "";
     return `<div class="copy-row">
-      <span class="muted">Kopieren für:</span>
+      <span class="muted">${t("copy_to")}</span>
       <div class="copy-select">
         <button class="select select-btn" data-action="toggle-copy">${label}</button>
         ${menu}
       </div>
-      <button class="btn small gray" data-action="do-copy" data-day="${day}" ${selected.size ? "" : "disabled"}>Kopieren</button>
+      <button class="btn small gray" data-action="do-copy" data-day="${day}" ${selected.size ? "" : "disabled"}>${t("copy")}</button>
     </div>`;
   }
 
@@ -594,7 +775,9 @@ class HeatingPanel extends HTMLElement {
         const type = el.dataset.type;
         let selected = this._zones.filter((z) => type !== "vacation" || !z.vacation).map((z) => z.id);
         if (!selected.length) selected = this._zones.map((z) => z.id);
-        this._config = { type, temperature: type === "manual" ? 22 : 15, hours: 2, selected: new Set(selected) };
+        const fahrenheit = units.unit === "°F";
+        const temperature = type === "manual" ? (fahrenheit ? 72 : 22) : fahrenheit ? 59 : 15;
+        this._config = { type, temperature, hours: 2, selected: new Set(selected) };
         break;
       }
       case "cancel-config":
@@ -607,7 +790,7 @@ class HeatingPanel extends HTMLElement {
           config.type === "manual"
             ? { type: `${DOMAIN}/manual/set`, zone_ids: zoneIds, temperature: config.temperature, hours: config.hours }
             : { type: `${DOMAIN}/vacation/set`, zone_ids: zoneIds, temperature: config.temperature };
-        const [ok] = await this._call(msg, config.type === "manual" ? "Manueller Modus eingeschaltet" : "Urlaubsmodus eingeschaltet");
+        const [ok] = await this._call(msg, t(config.type === "manual" ? "toast_manual_on" : "toast_vacation_on"));
         if (ok) this._config = null;
         break;
       }
@@ -624,8 +807,9 @@ class HeatingPanel extends HTMLElement {
         break;
       }
       case "add-zone": {
-        const schedule = Object.fromEntries(DAYS.map((d) => [d, clone(DEFAULT_DAY)]));
-        this._openEditor({ id: null, name: "Neue Zone", entities: [], schedule });
+        const day = { bounds: [...DEFAULT_BOUNDS], temps: [...units.defaultDay] };
+        const schedule = Object.fromEntries(DAYS.map((d) => [d, clone(day)]));
+        this._openEditor({ id: null, name: t("new_zone"), entities: [], schedule });
         this._editingName = true;
         this._showEntities = true;
         break;
@@ -637,12 +821,12 @@ class HeatingPanel extends HTMLElement {
         this._showEntities = !this._showEntities;
         break;
       case "cancel-edit":
-        if (this._dirty() && !confirm("Ungespeicherte Änderungen verwerfen?")) return;
+        if (this._dirty() && !confirm(t("confirm_discard"))) return;
         this._closeEditor();
         break;
       case "delete-zone": {
-        if (!confirm(`Zone „${this._draft.name}“ wirklich löschen? Die Thermostate behalten ihre letzte Temperatur.`)) return;
-        const [ok] = await this._call({ type: `${DOMAIN}/zone/delete`, zone_id: this._draft.id }, "Zone gelöscht");
+        if (!confirm(t("confirm_delete", { name: this._draft.name }))) return;
+        const [ok] = await this._call({ type: `${DOMAIN}/zone/delete`, zone_id: this._draft.id }, t("toast_deleted"));
         if (ok) this._closeEditor();
         break;
       }
@@ -656,16 +840,16 @@ class HeatingPanel extends HTMLElement {
         const form = this._manualForm;
         const [ok] = await this._call(
           { type: `${DOMAIN}/manual/set`, zone_ids: [this._draft.id], temperature: form.temperature, hours: form.hours },
-          "Manueller Modus eingeschaltet",
+          t("toast_manual_on"),
         );
         if (ok) this._manualForm = null;
         break;
       }
       case "manual-off":
-        await this._call({ type: `${DOMAIN}/manual/clear`, zone_ids: [this._draft.id] }, "Manueller Modus ausgeschaltet");
+        await this._call({ type: `${DOMAIN}/manual/clear`, zone_ids: [this._draft.id] }, t("toast_manual_off"));
         break;
       case "vacation-off":
-        await this._call({ type: `${DOMAIN}/vacation/clear`, zone_ids: [this._draft.id] }, "Urlaubsmodus ausgeschaltet");
+        await this._call({ type: `${DOMAIN}/vacation/clear`, zone_ids: [this._draft.id] }, t("toast_vacation_off"));
         break;
       case "toggle-day": {
         const day = el.dataset.day;
@@ -683,7 +867,7 @@ class HeatingPanel extends HTMLElement {
         for (const target of targets) this._draft.schedule[target] = clone(this._draft.schedule[day]);
         this._copyTargets = new Set();
         this._copyOpen = false;
-        this._showToast(`${DAY_LONG[day]} auf ${targets.map((d) => DAY_SHORT[d]).join(", ")} kopiert`);
+        this._showToast(t("toast_copied", { day: dayLong(day), targets: targets.map(dayShort).join(", ") }));
         break;
       }
       default:
@@ -885,12 +1069,12 @@ class HeatingPanel extends HTMLElement {
     if (input) this._commitName(input.value);
     const draft = this._draft;
     if (!draft.name.trim()) {
-      this._showToast("Bitte einen Namen vergeben.", true);
+      this._showToast(t("name_required"), true);
       return;
     }
     const zone = { name: draft.name, entities: draft.entities, schedule: draft.schedule };
     if (draft.id) zone.id = draft.id;
-    const [ok] = await this._call({ type: `${DOMAIN}/zone/save`, zone }, `„${draft.name}“ gespeichert`);
+    const [ok] = await this._call({ type: `${DOMAIN}/zone/save`, zone }, t("toast_saved", { name: draft.name }));
     if (ok) this._closeEditor();
   }
 }
