@@ -18,11 +18,12 @@ friert, und das ganze Haus in den Urlaubsmodus schicken. Kein YAML, keine Automa
 - **Zeitplan**: pro Wochentag fünf aneinandergrenzende Zeitfenster. Grenzen im 15-Minuten-Raster ziehen,
   je Zeitfenster eine Temperatur wählen. Das erste und das letzte Fenster bilden die Nacht und teilen sich eine Temperatur.
 - **Tage kopieren**: Montag einstellen und auf die ganze Woche, alle Arbeitstage oder einzelne Tage übertragen.
-- **Wochenregler**: verschiebt eine Grenze an allen Tagen um denselben Betrag. Unterschiedliche Zeiten (z. B. Wochenende) bleiben erhalten.
+- **Regler „Alle Tage“**: verschiebt eine Grenze an allen Tagen um denselben Betrag. Unterschiedliche Zeiten (z. B. Wochenende) bleiben erhalten.
 - **Manueller Modus**: eine feste Temperatur für 1 bis 24 Stunden, danach gilt wieder der Zeitplan.
 - **Urlaubsmodus**: eine feste Temperatur, bis du ihn ausschaltest.
 - **Aktionen** für Automationen, z. B. Urlaubsmodus, wenn alle das Haus verlassen haben.
-- Läuft auf dem Handy, folgt deiner Sprache (Deutsch und Englisch) und deinem Einheitensystem (°C oder °F).
+- Sieht aus wie der Rest von Home Assistant: folgt deinem Theme (hell oder dunkel), deiner Sprache (Deutsch und Englisch)
+  und deinem Einheitensystem (°C oder °F). Läuft auch auf dem Handy.
 
 ## Installation
 
@@ -51,9 +52,9 @@ In der Seitenleiste erscheint der Eintrag **Heizung**. Titel und Symbol lassen s
 
 ![Zonen-Editor](docs/images/zone-de.png)
 
-1. **Zone hinzufügen** wählen, einen Namen vergeben und unter **Thermostate** die Thermostate der Zone anhaken.
+1. Unten rechts **Zone hinzufügen** wählen, einen Namen vergeben und unter **Thermostate** die Thermostate der Zone anhaken.
 2. Montag aufklappen, die Grenzen ziehen und je Zeitfenster eine Temperatur wählen.
-3. Unter **Kopieren für** z. B. **Arbeitstage** wählen, **Kopieren** und dann **Speichern**.
+3. Unter **Kopieren nach** z. B. **Arbeitstage** wählen, **Kopieren** und dann unten rechts **Speichern**.
 
 Am Rechner lassen sich die Griffe auch mit den Pfeiltasten bewegen, mit gedrückter Umschalttaste in Stundenschritten.
 

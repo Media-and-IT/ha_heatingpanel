@@ -18,11 +18,12 @@ to vacation mode. No YAML, no automations, no helpers.
 - **Schedule**: five adjoining periods per weekday. Drag the boundaries in 15 minute steps and pick a
   temperature per period. The first and last period form the night and share one temperature.
 - **Copy days**: set up Monday and copy it to the whole week, to all workdays or to single days.
-- **Week slider**: shifts one boundary on every day by the same amount. Days with different times keep their differences.
+- **All days slider**: shifts one boundary on every day by the same amount. Days with different times keep their differences.
 - **Manual mode**: a fixed temperature for 1 to 24 hours, afterwards the schedule applies again.
 - **Vacation mode**: a fixed temperature until you switch it off.
 - **Actions** for automations, for example vacation mode when everybody has left.
-- Works on phones, follows your language (English and German) and your unit system (°C or °F).
+- Looks like the rest of Home Assistant: follows your theme (light or dark), your language (English and German)
+  and your unit system (°C or °F). Works on phones.
 
 ## Installation
 
@@ -51,9 +52,9 @@ Go to **Settings, Devices & services, Add integration** and choose **Heating Pan
 
 ![Zone editor](docs/images/zone-en.png)
 
-1. Select **Add zone**, enter a name and tick the thermostats of the zone under **Thermostats**.
+1. Select **Add zone** at the bottom right, enter a name and tick the thermostats of the zone under **Thermostats**.
 2. Expand Monday, drag the boundaries and choose a temperature for each period.
-3. Under **Copy to** choose for example **Workdays**, select **Copy** and then **Save**.
+3. Under **Copy to** choose for example **Workdays**, select **Copy** and then **Save** at the bottom right.
 
 On a computer the slider handles can also be moved with the arrow keys, hold Shift for steps of one hour.
 

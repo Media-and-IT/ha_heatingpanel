@@ -1,6 +1,7 @@
 /*
  * Heating Panel: sidebar panel for zones, weekly schedules, manual and vacation mode.
  * Plain web component without build step. Talks to the integration via websocket.
+ * All colours come from the Home Assistant theme, so light and dark themes just work.
  */
 
 const DOMAIN = "heatingpanel";
@@ -12,78 +13,96 @@ const DAY_MINUTES = 24 * 60;
 const STEP = 15;
 const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
 const MODE_ICONS = {
-  schedule: "mdi:calendar-month-outline",
-  manual: "mdi:hand-pointing-up",
+  schedule: "mdi:calendar-clock",
+  manual: "mdi:timer-outline",
   vacation: "mdi:airplane",
 };
 const DEFAULT_BOUNDS = [120, 240, 600, 960];
-const ARROWS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 7 5.5 12l5 5zM13.5 7l5 5-5 5z"/></svg>';
+// Colour scale of the schedule bars as [°C, [hue, saturation, lightness]]:
+// frost blue, eco green, then amber, orange and red across the comfort range.
+const COLOR_STOPS = [
+  [8, [210, 75, 52]],
+  [13, [180, 65, 38]],
+  [16, [125, 45, 42]],
+  [18, [46, 92, 50]],
+  [20, [30, 95, 52]],
+  [22, [12, 85, 52]],
+  [24, [-8, 70, 46]],
+];
 
 const STRINGS = {
   en: {
-    title: "Heating control",
+    title: "Heating",
+    menu: "Sidebar",
+    back: "Back",
     not_loaded: "The integration is not loaded.",
     unreachable: "Heating Panel is not available: {error}",
     loading: "Loading zones …",
-    no_zones: "No zones yet. Use “Add zone” to create your first zone and assign thermostats to it.",
+    zones: "Zones",
+    no_zones: "No zones yet. Create a zone and assign the thermostats of a room to it.",
     add_zone: "Add zone",
     mode_schedule: "Schedule",
     mode_manual: "Manual mode",
     mode_vacation: "Vacation mode",
-    manual_text: "Manual mode sets the temperature of the selected zones for a number of hours.",
-    vacation_text: "Vacation mode holds the selected zones at one temperature until you switch it off.",
+    manual_text: "Sets the selected zones to a fixed temperature for a number of hours. Afterwards the schedule applies again.",
+    vacation_text: "Holds the selected zones at one temperature until you switch it off.",
     configure: "Configure",
-    temperature: "Temperature:",
-    duration: "For:",
-    zones_selected: "{count} of {total} zones selected",
+    temperature: "Temperature",
+    duration: "Duration",
+    hours_value: "{h} h",
+    zones_selected: "{count} of {total} zones selected. Choose the zones below.",
     turn_on: "Turn on",
     cancel: "Cancel",
+    active_in_one: "Active in 1 zone",
+    active_in: "Active in {count} zones",
+    end_all: "End all",
+    end: "End",
     manual_until: "Manual until {time}",
+    current: "Current {temp}",
     no_thermostats: "No thermostats assigned",
     thermostats_unavailable: "{count} of {total} thermostats unavailable",
     end_manual: "End manual mode",
     end_vacation: "End vacation mode",
-    off: "OFF",
-    manage: "Manage",
-    current: "Current {temp}",
-    zone_name: "Zone name",
-    rename: "Rename",
-    thermostats: "Thermostats ({count})",
     delete: "Delete",
     save: "Save",
-    unsaved: "Unsaved changes",
-    week: "Week",
-    week_hint: "Shifts a time boundary on all days by the same amount.",
-    zone_thermostats: "Thermostats in this zone",
+    name: "Name",
+    thermostats_title: "Thermostats",
+    choose: "Choose",
+    done: "Done",
+    none_selected: "No thermostats selected yet.",
     search: "Search",
     in_zone: "in zone “{zone}”",
     not_found: "not found",
     no_climate: "No thermostats (climate entities) found.",
-    manual_active: "Manual mode active: {temp} until {time}",
-    turn_off: "turn off",
-    manual_is_off: "Manual mode is off",
+    manual_inactive: "Manual mode is off",
+    manual_active: "{temp} until {time}",
+    vacation_active: "Vacation mode: {temp}",
+    afterwards: "applies again when manual mode ends",
     after_first_save: "Available after the zone has been saved.",
-    no_selection: "no selection",
-    switch_on: "turn on",
-    vacation_active: "Vacation mode active: {temp}",
-    afterwards: " (afterwards)",
+    no_selection: "Choose",
+    schedule_title: "Weekly schedule",
+    schedule_hint: "A day runs from 05:00 to 05:00 the next day.",
     night: "Night",
     range_label: "{day}, {from} to {to}",
     expand: "Expand {day}",
     collapse: "Collapse {day}",
     boundary: "{name}, boundary {number}",
-    select_days: "Select days",
+    all_days: "All days",
+    all_days_hint: "Shifts a boundary on every day by the same amount.",
+    copy_to: "Copy to",
     whole_week: "Whole week",
     workdays: "Workdays",
-    copy_to: "Copy to:",
     copy: "Copy",
     toast_manual_on: "Manual mode turned on",
     toast_vacation_on: "Vacation mode turned on",
     toast_manual_off: "Manual mode turned off",
     toast_vacation_off: "Vacation mode turned off",
     new_zone: "New zone",
-    confirm_discard: "Discard unsaved changes?",
-    confirm_delete: "Really delete zone “{name}”? The thermostats keep their last temperature.",
+    discard_title: "Discard changes?",
+    discard_text: "The changes to this zone have not been saved.",
+    discard: "Discard",
+    delete_title: "Delete zone?",
+    delete_text: "“{name}” will be deleted. The thermostats keep their last temperature.",
     toast_deleted: "Zone deleted",
     toast_copied: "{day} copied to {targets}",
     name_required: "Please enter a name.",
@@ -92,71 +111,79 @@ const STRINGS = {
     days_long: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
   },
   de: {
-    title: "Heizungssteuerung",
+    title: "Heizung",
+    menu: "Seitenleiste",
+    back: "Zurück",
     not_loaded: "Die Integration ist nicht geladen.",
     unreachable: "Die Heizungssteuerung ist nicht erreichbar: {error}",
     loading: "Lade Zonen …",
-    no_zones: "Noch keine Zonen angelegt. Lege mit „Zone hinzufügen“ deine erste Zone an und weise ihr Thermostate zu.",
+    zones: "Zonen",
+    no_zones: "Noch keine Zonen angelegt. Lege eine Zone an und weise ihr die Thermostate eines Raums zu.",
     add_zone: "Zone hinzufügen",
-    mode_schedule: "Zeitplan-Modus",
+    mode_schedule: "Zeitplan",
     mode_manual: "Manueller Modus",
     mode_vacation: "Urlaubsmodus",
-    manual_text: "Der manuelle Modus ermöglicht es, die Temperatur in jeder Zone für eine bestimmte Anzahl an Stunden anzupassen.",
-    vacation_text: "Der Urlaubsmodus ermöglicht es, die Temperatur Ihres Zuhauses von unterwegs aus in jeder Zone anzupassen.",
+    manual_text: "Setzt die gewählten Zonen für einige Stunden auf eine feste Temperatur. Danach gilt wieder der Zeitplan.",
+    vacation_text: "Hält die gewählten Zonen auf einer Temperatur, bis du den Urlaubsmodus beendest.",
     configure: "Konfigurieren",
-    temperature: "Temperatur:",
-    duration: "Für:",
-    zones_selected: "{count} von {total} Zonen ausgewählt",
+    temperature: "Temperatur",
+    duration: "Dauer",
+    hours_value: "{h} h",
+    zones_selected: "{count} von {total} Zonen ausgewählt. Wähle unten die Zonen aus.",
     turn_on: "Einschalten",
     cancel: "Abbrechen",
+    active_in_one: "In 1 Zone aktiv",
+    active_in: "In {count} Zonen aktiv",
+    end_all: "Alle beenden",
+    end: "Beenden",
     manual_until: "Manuell bis {time}",
+    current: "Ist {temp}",
     no_thermostats: "Keine Thermostate zugewiesen",
     thermostats_unavailable: "{count} von {total} Thermostaten nicht erreichbar",
     end_manual: "Manuellen Modus beenden",
     end_vacation: "Urlaubsmodus beenden",
-    off: "OFF",
-    manage: "Verwalten",
-    current: "Ist {temp}",
-    zone_name: "Name der Zone",
-    rename: "Umbenennen",
-    thermostats: "Thermostate ({count})",
     delete: "Löschen",
     save: "Speichern",
-    unsaved: "Ungespeicherte Änderungen",
-    week: "Woche",
-    week_hint: "Verschiebt eine Zeitgrenze an allen Tagen gleichzeitig um denselben Betrag.",
-    zone_thermostats: "Thermostate dieser Zone",
+    name: "Name",
+    thermostats_title: "Thermostate",
+    choose: "Auswählen",
+    done: "Fertig",
+    none_selected: "Noch keine Thermostate ausgewählt.",
     search: "Suchen",
     in_zone: "in Zone „{zone}“",
     not_found: "nicht gefunden",
     no_climate: "Keine Thermostate (climate-Entitäten) gefunden.",
-    manual_active: "Manueller Modus aktiv: {temp} bis {time}",
-    turn_off: "ausschalten",
-    manual_is_off: "Der manuelle Modus ist ausgeschaltet",
+    manual_inactive: "Der manuelle Modus ist ausgeschaltet",
+    manual_active: "{temp} bis {time}",
+    vacation_active: "Urlaubsmodus: {temp}",
+    afterwards: "gilt wieder, wenn der manuelle Modus endet",
     after_first_save: "Nach dem ersten Speichern verfügbar.",
-    no_selection: "keine Auswahl",
-    switch_on: "einschalten",
-    vacation_active: "Urlaubsmodus aktiv: {temp}",
-    afterwards: " (danach)",
+    no_selection: "Auswählen",
+    schedule_title: "Wochenplan",
+    schedule_hint: "Ein Tag läuft von 05:00 bis 05:00 am Folgetag.",
     night: "Nacht",
     range_label: "{day}, {from} bis {to}",
     expand: "{day} aufklappen",
     collapse: "{day} zuklappen",
     boundary: "{name}, Grenze {number}",
-    select_days: "Tage auswählen",
+    all_days: "Alle Tage",
+    all_days_hint: "Verschiebt eine Grenze an allen Tagen um denselben Betrag.",
+    copy_to: "Kopieren nach",
     whole_week: "Die ganze Woche",
     workdays: "Arbeitstage",
-    copy_to: "Kopieren für:",
     copy: "Kopieren",
     toast_manual_on: "Manueller Modus eingeschaltet",
     toast_vacation_on: "Urlaubsmodus eingeschaltet",
     toast_manual_off: "Manueller Modus ausgeschaltet",
     toast_vacation_off: "Urlaubsmodus ausgeschaltet",
     new_zone: "Neue Zone",
-    confirm_discard: "Ungespeicherte Änderungen verwerfen?",
-    confirm_delete: "Zone „{name}“ wirklich löschen? Die Thermostate behalten ihre letzte Temperatur.",
+    discard_title: "Änderungen verwerfen?",
+    discard_text: "Die Änderungen an dieser Zone wurden noch nicht gespeichert.",
+    discard: "Verwerfen",
+    delete_title: "Zone löschen?",
+    delete_text: "„{name}“ wird gelöscht. Die Thermostate behalten ihre letzte Temperatur.",
     toast_deleted: "Zone gelöscht",
-    toast_copied: "{day} auf {targets} kopiert",
+    toast_copied: "{day} nach {targets} kopiert",
     name_required: "Bitte einen Namen vergeben.",
     toast_saved: "„{name}“ gespeichert",
     days_short: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
@@ -194,18 +221,38 @@ const esc = (value) =>
   );
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const pct = (minutes) => (minutes / DAY_MINUTES) * 100;
+const icon = (name) => `<ha-icon icon="${name}"></ha-icon>`;
 
 function fmtTemp(value) {
-  if (value == null || Number.isNaN(Number(value))) return `--${units.unit}`;
+  // Non-breaking space, so a temperature never wraps between number and unit.
+  if (value == null || Number.isNaN(Number(value))) return `--\u00a0${units.unit}`;
   const digits = units.step < 1 ? 1 : 0;
   const number = Number(value).toLocaleString(i18n.locale, { minimumFractionDigits: digits, maximumFractionDigits: 1 });
-  return `${number}${units.unit}`;
+  return `${number}\u00a0${units.unit}`;
 }
 
-/** Colour of a period: cold below 17 °C, hot from 22 °C. */
-function tempClass(value) {
+function tempHsl(value) {
   const celsius = units.unit === "°F" ? ((value - 32) * 5) / 9 : value;
-  return celsius < 17 ? "cold" : celsius >= 22 ? "hot" : "ok";
+  const last = COLOR_STOPS[COLOR_STOPS.length - 1];
+  if (celsius <= COLOR_STOPS[0][0]) return COLOR_STOPS[0][1];
+  if (celsius >= last[0]) return last[1];
+  const i = COLOR_STOPS.findIndex(([limit]) => celsius < limit);
+  const [t0, c0] = COLOR_STOPS[i - 1];
+  const [t1, c1] = COLOR_STOPS[i];
+  const f = (celsius - t0) / (t1 - t0);
+  return c0.map((v, k) => v + (c1[k] - v) * f);
+}
+
+/** Colour of a temperature on the scale from frost blue to hot red. */
+function tempColor(value) {
+  const [h, s, l] = tempHsl(value);
+  return `hsl(${((h + 360) % 360).toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%)`;
+}
+
+/** Dark text on the bright yellow part of the scale, white text everywhere else. */
+function tempTextClass(value) {
+  const [h] = tempHsl(value);
+  return h >= 38 && h <= 100 ? "dark-text" : "";
 }
 
 /** Choice of temperatures for the selects, plus a stored value that is off the grid. */
@@ -237,23 +284,31 @@ function clampBound(bounds, idx, value) {
   return Math.min(high, Math.max(low, Math.round(value / STEP) * STEP));
 }
 
-function tempSelect(change, value, attrs = "", allowNone = false) {
-  const none = allowNone ? `<option value="" ${value == null ? "selected" : ""}>${t("no_selection")}</option>` : "";
-  const options = temperatures(value)
-    .map((temp) => `<option value="${temp}" ${temp === value ? "selected" : ""}>${fmtTemp(temp)}</option>`)
-    .join("");
-  return `<select class="select" data-change="${change}" ${attrs}>${none}${options}</select>`;
+function selectField(label, change, options, attrs = "") {
+  return `<label class="field select"><span class="field-label">${esc(label)}</span>
+    <select data-change="${change}" ${attrs}>${options}</select></label>`;
 }
 
-function hoursSelect(change, value) {
-  const options = HOURS.map(
-    (h) => `<option value="${h}" ${h === value ? "selected" : ""}>${String(h).padStart(2, "0")} h</option>`,
-  ).join("");
-  return `<select class="select" data-change="${change}">${options}</select>`;
+function tempOptions(value, allowNone = false) {
+  const none = allowNone ? `<option value="" ${value == null ? "selected" : ""}>${t("no_selection")}</option>` : "";
+  return (
+    none +
+    temperatures(value)
+      .map((temp) => `<option value="${temp}" ${temp === value ? "selected" : ""}>${fmtTemp(temp)}</option>`)
+      .join("")
+  );
+}
+
+function hourOptions(value) {
+  return HOURS.map((h) => `<option value="${h}" ${h === value ? "selected" : ""}>${t("hours_value", { h })}</option>`).join("");
 }
 
 function checkbox(attrs, checked, disabled = false) {
   return `<input type="checkbox" class="check" ${attrs} ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}>`;
+}
+
+function badge(iconName, color) {
+  return `<span class="badge" style="--badge-color:${color}">${icon(iconName)}</span>`;
 }
 
 class HeatingPanel extends HTMLElement {
@@ -267,12 +322,13 @@ class HeatingPanel extends HTMLElement {
     this._original = null;
     this._weekBounds = null;
     this._openDay = "mon";
-    this._showEntities = false;
+    this._entitiesOpen = false;
     this._entityFilter = "";
-    this._editingName = false;
+    this._focusName = false;
     this._manualForm = null;
     this._copyOpen = false;
     this._copyTargets = new Set();
+    this._dialog = null;
     this._drag = null;
     this._pointerDown = false;
     this._pendingRender = false;
@@ -283,17 +339,17 @@ class HeatingPanel extends HTMLElement {
 
     const root = this.attachShadow({ mode: "open" });
     root.innerHTML = `<style>${STYLE}</style>
-      <div class="toolbar"><span class="menu"></span><div class="title"></div></div>
+      <div class="toolbar"></div>
       <div class="content"></div>
       <div class="toast" hidden></div>`;
-    this._menuButton = document.createElement("ha-menu-button");
-    root.querySelector(".menu").append(this._menuButton);
 
     root.addEventListener("click", (ev) => this._onClick(ev));
     root.addEventListener("change", (ev) => this._onChange(ev));
     root.addEventListener("input", (ev) => this._onInput(ev));
     root.addEventListener("keydown", (ev) => this._onKeyDown(ev));
-    root.addEventListener("focusout", (ev) => this._onFocusOut(ev));
+    root.addEventListener("focusout", () => {
+      if (this._pendingRender) setTimeout(() => this._requestRender(), 0);
+    });
     root.addEventListener("pointerdown", (ev) => this._onPointerDown(ev));
     this._onPointerUp = () => {
       this._pointerDown = false;
@@ -303,10 +359,9 @@ class HeatingPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._menuButton.hass = hass;
     this._subscribe();
     const languageChanged = setLanguage(hass);
-    const signature = this._climateSignature();
+    const signature = `${hass.dockedSidebar}|${this._climateSignature()}`;
     if (languageChanged || signature !== this._signature) {
       this._signature = signature;
       this._requestRender();
@@ -318,9 +373,9 @@ class HeatingPanel extends HTMLElement {
   }
 
   set narrow(narrow) {
+    if (this._narrow === narrow) return;
     this._narrow = narrow;
-    this._menuButton.narrow = narrow;
-    this.toggleAttribute("narrow", Boolean(narrow));
+    this._requestRender();
   }
 
   set panel(_panel) {}
@@ -392,6 +447,10 @@ class HeatingPanel extends HTMLElement {
       .sort((a, b) => a.name.localeCompare(b.name, i18n.locale));
   }
 
+  _entityName(id) {
+    return this._hass?.states[id]?.attributes.friendly_name || id;
+  }
+
   _currentTemp(zone) {
     const values = zone.entities
       .map((id) => this._hass?.states[id]?.attributes.current_temperature)
@@ -411,7 +470,7 @@ class HeatingPanel extends HTMLElement {
   }
 
   _dirty() {
-    return this._draft && JSON.stringify(this._draft) !== this._original;
+    return Boolean(this._draft) && JSON.stringify(this._draft) !== this._original;
   }
 
   async _call(msg, success) {
@@ -438,9 +497,18 @@ class HeatingPanel extends HTMLElement {
     this._toastTimer = setTimeout(() => (toast.hidden = true), error ? 6000 : 3000);
   }
 
+  /** Confirmation dialog in the style of Home Assistant. Resolves to true on confirm. */
+  _confirm(title, text, confirmLabel, destructive = false) {
+    return new Promise((resolve) => {
+      this._dialog = { title, text, confirmLabel, destructive, resolve };
+      this._render();
+      this.shadowRoot.querySelector("[data-action=dialog-confirm]")?.focus();
+    });
+  }
+
   /* ---------- rendering ---------- */
 
-  /** Render unless that would break an ongoing interaction (drag, open select, click). */
+  /** Render unless that would break an ongoing interaction (drag, open select, typing, click). */
   _requestRender() {
     const active = this.shadowRoot.activeElement;
     const typing = active && (active.tagName === "SELECT" || (active.tagName === "INPUT" && active.type !== "checkbox"));
@@ -453,71 +521,109 @@ class HeatingPanel extends HTMLElement {
 
   _render() {
     this._pendingRender = false;
-    const content = this.shadowRoot.querySelector(".content");
     if (!this._hass) return;
-    this.shadowRoot.querySelector(".toolbar .title").textContent = t("title");
+    const editing = this._view === "edit" && this._draft;
+    this._renderToolbar(editing);
+    const content = this.shadowRoot.querySelector(".content");
+    let html;
     if (this._loadError) {
-      content.innerHTML = `<div class="card"><div class="empty">${esc(t("unreachable", { error: this._loadError }))}</div></div>`;
-      return;
+      html = `<div class="card"><div class="empty">${esc(t("unreachable", { error: this._loadError }))}</div></div>`;
+    } else if (this._zones === null) {
+      html = `<div class="card"><div class="empty">${t("loading")}</div></div>`;
+    } else {
+      html = editing ? this._renderEditor() : this._renderList();
     }
-    if (this._zones === null) {
-      content.innerHTML = `<div class="card"><div class="empty">${t("loading")}</div></div>`;
-      return;
-    }
-    content.innerHTML = this._view === "edit" && this._draft ? this._renderEditor() : this._renderList();
-    if (this._view === "edit") {
+    content.innerHTML = html + this._renderDialog();
+    if (editing) {
       this._applyEntityFilter();
-      const input = this.shadowRoot.querySelector("[data-input=name]");
-      if (input && this.shadowRoot.activeElement !== input) {
-        input.focus();
-        input.select();
+      if (this._focusName) {
+        this._focusName = false;
+        const input = this.shadowRoot.querySelector("[data-input=name]");
+        input?.focus();
+        input?.select();
       }
     }
   }
 
+  _renderToolbar(editing) {
+    const toolbar = this.shadowRoot.querySelector(".toolbar");
+    let leading = "";
+    if (editing) {
+      leading = `<button class="icon-btn" data-action="back" title="${t("back")}" aria-label="${t("back")}">${icon("mdi:arrow-left")}</button>`;
+    } else if (this._narrow || this._hass.dockedSidebar === "always_hidden") {
+      leading = `<button class="icon-btn" data-action="menu" title="${t("menu")}" aria-label="${t("menu")}">${icon("mdi:menu")}</button>`;
+    }
+    const title = editing ? this._draft.name || t("new_zone") : t("title");
+    const trailing =
+      editing && this._draft.id
+        ? `<button class="icon-btn" data-action="delete-zone" title="${t("delete")}" aria-label="${t("delete")}">${icon("mdi:delete-outline")}</button>`
+        : "";
+    toolbar.classList.toggle("has-leading", Boolean(leading));
+    toolbar.innerHTML = `${leading}<div class="title">${esc(title)}</div>${trailing}`;
+  }
+
+  _renderDialog() {
+    const d = this._dialog;
+    if (!d) return "";
+    return `<div class="dialog-backdrop">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="hp-dialog-title">
+        <div class="dialog-title" id="hp-dialog-title">${esc(d.title)}</div>
+        <div class="dialog-text">${esc(d.text)}</div>
+        <div class="dialog-actions">
+          <button class="btn plain" data-action="dialog-cancel">${t("cancel")}</button>
+          <button class="btn plain ${d.destructive ? "danger" : ""}" data-action="dialog-confirm">${esc(d.confirmLabel)}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* list view */
+
   _renderList() {
     const zones = this._zones;
-    const rows = zones.length
-      ? zones.map((zone) => this._renderZoneRow(zone)).join("")
-      : `<div class="empty">${esc(t("no_zones"))}</div>`;
-    return `<div class="card">
+    const body = zones.length
+      ? `<div class="zone-list">${zones.map((zone) => this._renderZoneRow(zone)).join("")}</div>`
+      : `<div class="empty">${icon("mdi:radiator")}<p>${esc(t("no_zones"))}</p></div>`;
+    return `<div class="page">
       <div class="modes">${this._renderModeCard("manual")}${this._renderModeCard("vacation")}</div>
-      <div class="zones">${rows}</div>
-      <div class="center"><button class="btn pill" data-action="add-zone">${t("add_zone")}</button></div>
-    </div>`;
+      <div class="card">
+        <div class="card-header">${t("zones")}</div>
+        ${body}
+      </div>
+    </div>
+    <button class="fab" data-action="add-zone">${icon("mdi:plus")}<span>${t("add_zone")}</span></button>`;
   }
 
   _renderModeCard(type) {
     const manual = type === "manual";
-    const title = t(`mode_${type}`);
-    const icon = MODE_ICONS[type];
+    const color = manual ? "var(--state-climate-heat-color, #ff8100)" : "var(--state-climate-cool-color, #2b9af9)";
+    const active = this._zones.filter((zone) => (manual ? zone.status.mode === "manual" : zone.vacation));
     const config = this._config?.type === type ? this._config : null;
-    if (!config) {
-      const text = t(manual ? "manual_text" : "vacation_text");
-      return `<div class="mode-card">
-        <ha-icon class="big-icon" icon="${icon}"></ha-icon>
-        <div class="mode-body">
-          <div class="mode-title">${title}</div>
-          <div class="mode-text">${text}</div>
-          <div class="mode-actions">
-            <button class="btn pill" data-action="open-config" data-type="${type}" ${this._zones.length ? "" : "disabled"}>${t("configure")}</button>
-          </div>
+    const head = `<div class="mode-head">
+      ${badge(MODE_ICONS[type], color)}
+      <div class="mode-titles">
+        <div class="mode-title">${t(`mode_${type}`)}</div>
+        ${active.length ? `<div class="mode-active">${active.length === 1 ? t("active_in_one") : t("active_in", { count: active.length })}</div>` : ""}
+      </div>
+    </div>`;
+    if (config) {
+      const duration = manual ? selectField(t("duration"), "cfg-hours", hourOptions(config.hours)) : "";
+      return `<div class="card mode-card active">
+        ${head}
+        <div class="mode-form">${selectField(t("temperature"), "cfg-temp", tempOptions(config.temperature))}${duration}</div>
+        <div class="mode-text">${t("zones_selected", { count: config.selected.size, total: this._zones.length })}</div>
+        <div class="card-actions">
+          <button class="btn plain" data-action="cancel-config">${t("cancel")}</button>
+          <button class="btn filled" data-action="apply-config" ${config.selected.size ? "" : "disabled"}>${t("turn_on")}</button>
         </div>
       </div>`;
     }
-    const hours = manual
-      ? `<label class="form-label">${t("duration")}</label>${hoursSelect("cfg-hours", config.hours)}`
-      : "";
-    return `<div class="mode-card active">
-      <ha-icon class="big-icon" icon="${icon}"></ha-icon>
-      <div class="mode-body">
-        <div class="mode-title">${title}</div>
-        <div class="form-grid"><label class="form-label">${t("temperature")}</label>${tempSelect("cfg-temp", config.temperature)}${hours}</div>
-        <div class="mode-hint">${t("zones_selected", { count: config.selected.size, total: this._zones.length })}</div>
-        <div class="mode-actions">
-          <button class="btn pill" data-action="apply-config" ${config.selected.size ? "" : "disabled"}>${t("turn_on")}</button>
-          <button class="btn pill outline" data-action="cancel-config">${t("cancel")}</button>
-        </div>
+    return `<div class="card mode-card">
+      ${head}
+      <div class="mode-text">${t(manual ? "manual_text" : "vacation_text")}</div>
+      <div class="card-actions">
+        ${active.length ? `<button class="btn plain" data-action="end-all" data-type="${type}">${t("end_all")}</button>` : ""}
+        <button class="btn plain" data-action="open-config" data-type="${type}" ${this._zones.length ? "" : "disabled"}>${t("configure")}</button>
       </div>
     </div>`;
   }
@@ -530,85 +636,98 @@ class HeatingPanel extends HTMLElement {
     let warning = "";
     if (!zone.entities.length) warning = t("no_thermostats");
     else if (unavailable) warning = t("thermostats_unavailable", { count: unavailable, total: zone.entities.length });
+    const now = current != null ? t("current", { temp: fmtTemp(current) }).replace(/ /g, "\u00a0") : "";
+    const secondary = now ? `${label} · ${now}` : label;
 
-    let actions;
-    if (this._config) {
-      actions = checkbox(`data-change="cfg-zone" data-zone="${esc(zone.id)}" aria-label="${esc(zone.name)}"`, this._config.selected.has(zone.id));
+    let trailing;
+    const selecting = Boolean(this._config);
+    if (selecting) {
+      trailing = checkbox(`tabindex="-1" aria-hidden="true"`, this._config.selected.has(zone.id));
     } else {
-      const off =
+      const end =
         status.mode === "schedule"
           ? ""
-          : `<button class="btn off" data-action="clear-override" data-zone="${esc(zone.id)}" title="${t(status.mode === "manual" ? "end_manual" : "end_vacation")}">${t("off")}</button>`;
-      actions = `${off}<button class="btn small blue" data-action="manage" data-zone="${esc(zone.id)}">${t("manage")}</button>`;
+          : `<button class="btn plain small end" data-action="clear-override" data-zone="${esc(zone.id)}"
+              title="${t(status.mode === "manual" ? "end_manual" : "end_vacation")}">${icon("mdi:close-circle-outline")}<span>${t("end")}</span></button>`;
+      trailing = `${end}<span class="chevron">${icon("mdi:chevron-right")}</span>`;
     }
-    return `<div class="zone-row">
-      <div class="zone-name">${esc(zone.name)}${warning ? `<span class="warn">${esc(warning)}</span>` : ""}</div>
-      <div class="zone-temp"><span class="target">${fmtTemp(status.target)}</span>${current != null ? `<span class="current">${t("current", { temp: fmtTemp(current) })}</span>` : ""}</div>
-      <div class="zone-mode"><ha-icon icon="${MODE_ICONS[status.mode]}"></ha-icon><span>${esc(label)}</span></div>
-      <div class="zone-actions">${actions}</div>
+    return `<div class="zone-row ${selecting && this._config.selected.has(zone.id) ? "selected" : ""}" role="button" tabindex="0"
+        data-action="${selecting ? "toggle-select" : "manage"}" data-zone="${esc(zone.id)}">
+      ${badge(MODE_ICONS[status.mode], tempColor(status.target))}
+      <div class="zone-info">
+        <div class="zone-name">${esc(zone.name)}</div>
+        <div class="secondary">${esc(secondary)}</div>
+        ${warning ? `<div class="warn">${icon("mdi:alert-outline")}${esc(warning)}</div>` : ""}
+      </div>
+      <div class="zone-target">${fmtTemp(status.target)}</div>
+      <div class="zone-trailing">${trailing}</div>
     </div>`;
   }
+
+  /* editor view */
 
   _renderEditor() {
     const draft = this._draft;
     const live = draft.id ? this._zone(draft.id) : null;
-    const title = this._editingName
-      ? `<input class="name-input" data-input="name" value="${esc(draft.name)}" maxlength="64" aria-label="${t("zone_name")}">`
-      : `<h1>${esc(draft.name)}</h1><button class="icon-btn" data-action="edit-name" title="${t("rename")}"><ha-icon icon="mdi:pencil"></ha-icon></button>`;
-    return `<div class="card editor">
-      <div class="ed-head">
-        <div class="ed-title">${title}</div>
-        <div class="ed-buttons">
-          <button class="btn small blue ${this._showEntities ? "pressed" : ""}" data-action="toggle-entities">${t("thermostats", { count: draft.entities.length })}</button>
-          <button class="btn small gray" data-action="cancel-edit">${t("cancel")}</button>
-          ${draft.id ? `<button class="btn small red" data-action="delete-zone">${t("delete")}</button>` : ""}
-          <button class="btn small green" data-action="save-zone">${t("save")}</button>
+    return `<div class="page editor">
+      <div class="card">
+        <div class="card-content">
+          <label class="field text"><span class="field-label">${t("name")}</span>
+            <input data-input="name" value="${esc(draft.name)}" maxlength="64" autocomplete="off"></label>
+          ${this._renderEntities()}
         </div>
       </div>
-      ${this._dirty() ? `<div class="dirty">${t("unsaved")}</div>` : ""}
-      ${this._showEntities ? this._renderEntities() : ""}
       ${this._renderOverrides(live)}
-      <div class="schedule">
+      <div class="card schedule">
+        <div class="card-header">${t("schedule_title")}<div class="card-subtitle">${t("schedule_hint")}</div></div>
         ${DAYS.map((day) => this._renderDay(day)).join("")}
-        <div class="grid-row axis-row"><span></span>${this._renderAxis()}<span></span></div>
-        <div class="day week">
-          <div class="grid-row">
-            <div class="day-label">${t("week")}</div>
+        <div class="day all-days">
+          <div class="day-row">
+            <span class="day-label">${t("all_days")}</span>
             ${this._renderBar("week", this._weekBounds, null)}
             <span></span>
           </div>
-          <div class="week-hint">${t("week_hint")}</div>
+          <div class="indent secondary small">${t("all_days_hint")}</div>
         </div>
       </div>
-    </div>`;
+    </div>
+    <button class="fab" data-action="save-zone">${icon("mdi:content-save-outline")}<span>${t("save")}</span></button>`;
   }
 
   _renderEntities() {
     const draft = this._draft;
-    const climates = this._climateEntities();
-    const known = new Set(climates.map((c) => c.id));
-    const missing = draft.entities.filter((id) => !known.has(id)).map((id) => ({ id, name: id, missing: true }));
-    const rows = [...climates, ...missing]
-      .map((entity) => {
-        const owner = this._zones.find((zone) => zone.id !== draft.id && zone.entities.includes(entity.id));
-        const checked = draft.entities.includes(entity.id);
-        let info = entity.id;
-        if (owner) info += ` · ${t("in_zone", { zone: owner.name })}`;
-        if (entity.missing) info += ` · ${t("not_found")}`;
-        return `<label class="entity ${owner ? "taken" : ""}" data-search="${esc(`${entity.name} ${entity.id}`.toLowerCase())}">
-          ${checkbox(`data-change="toggle-entity" data-entity="${esc(entity.id)}"`, checked, Boolean(owner))}
-          <span class="entity-text"><span class="entity-name">${esc(entity.name)}</span><span class="entity-id">${esc(info)}</span></span>
-          ${typeof entity.current === "number" ? `<span class="entity-temp">${fmtTemp(entity.current)}</span>` : ""}
-        </label>`;
-      })
-      .join("");
-    return `<div class="box entities">
-      <div class="box-head">
-        <span>${t("zone_thermostats")}</span>
-        <input type="search" class="search" placeholder="${t("search")}" data-input="entity-filter" value="${esc(this._entityFilter)}">
+    const chips = draft.entities.length
+      ? draft.entities.map((id) => `<span class="chip">${icon("mdi:thermostat")}${esc(this._entityName(id))}</span>`).join("")
+      : `<span class="secondary">${t("none_selected")}</span>`;
+    let list = "";
+    if (this._entitiesOpen) {
+      const climates = this._climateEntities();
+      const known = new Set(climates.map((c) => c.id));
+      const missing = draft.entities.filter((id) => !known.has(id)).map((id) => ({ id, name: id, missing: true }));
+      const rows = [...climates, ...missing]
+        .map((entity) => {
+          const owner = this._zones.find((zone) => zone.id !== draft.id && zone.entities.includes(entity.id));
+          let info = entity.id;
+          if (owner) info += ` · ${t("in_zone", { zone: owner.name })}`;
+          if (entity.missing) info += ` · ${t("not_found")}`;
+          return `<label class="entity ${owner ? "taken" : ""}" data-search="${esc(`${entity.name} ${entity.id}`.toLowerCase())}">
+            ${checkbox(`data-change="toggle-entity" data-entity="${esc(entity.id)}"`, draft.entities.includes(entity.id), Boolean(owner))}
+            <span class="entity-text"><span>${esc(entity.name)}</span><span class="secondary small">${esc(info)}</span></span>
+            ${typeof entity.current === "number" ? `<span class="secondary">${fmtTemp(entity.current)}</span>` : ""}
+          </label>`;
+        })
+        .join("");
+      list = `<div class="entity-picker">
+        <label class="field text search">${icon("mdi:magnify")}<input type="search" placeholder="${t("search")}" data-input="entity-filter" value="${esc(this._entityFilter)}"></label>
+        ${rows ? `<div class="entity-list">${rows}</div>` : `<div class="secondary">${t("no_climate")}</div>`}
+      </div>`;
+    }
+    return `<div class="subheader">
+        <span>${t("thermostats_title")}</span>
+        <button class="btn plain small" data-action="toggle-entities">${t(this._entitiesOpen ? "done" : "choose")}</button>
       </div>
-      ${rows ? `<div class="entity-list">${rows}</div>` : `<div class="empty">${t("no_climate")}</div>`}
-    </div>`;
+      <div class="chips">${chips}</div>
+      ${list}`;
   }
 
   _applyEntityFilter() {
@@ -621,36 +740,42 @@ class HeatingPanel extends HTMLElement {
   _renderOverrides(live) {
     const draft = this._draft;
     const manualOn = live?.status.mode === "manual";
+    const heat = "var(--state-climate-heat-color, #ff8100)";
     let manual;
     if (manualOn) {
-      manual = `<div class="box-line">
-        <span>${t("manual_active", { temp: `<b>${fmtTemp(live.status.target)}</b>`, time: fmtUntil(live.status.until) })}</span>
-        <button class="btn small gray" data-action="manual-off">${t("turn_off")}</button>
+      manual = `<div class="status-row">
+        ${badge(MODE_ICONS.manual, heat)}
+        <div><div>${t("mode_manual")}</div><div class="secondary">${t("manual_active", { temp: fmtTemp(live.status.target), time: fmtUntil(live.status.until) })}</div></div>
+        <button class="btn plain" data-action="manual-off">${t("end")}</button>
       </div>`;
     } else {
       const form = this._manualForm;
-      manual = `<div class="box-line">
-        <span>${t("manual_is_off")}</span>
-        <button class="link" data-action="toggle-manual-form" ${draft.id ? "" : "disabled"}>${t("configure")} <span class="caret ${form ? "down" : ""}"></span></button>
+      manual = `<div class="status-row">
+        ${badge(MODE_ICONS.manual, "var(--disabled-text-color, #9e9e9e)")}
+        <div><div>${t("manual_inactive")}</div>${draft.id ? "" : `<div class="secondary">${t("after_first_save")}</div>`}</div>
+        ${form ? "" : `<button class="btn plain" data-action="toggle-manual-form" ${draft.id ? "" : "disabled"}>${t("configure")}</button>`}
       </div>
-      ${draft.id ? "" : `<div class="muted small">${t("after_first_save")}</div>`}
       ${
         form
           ? `<div class="manual-form">
-              <label class="form-label">${t("temperature")}</label>${tempSelect("manual-temp", form.temperature, "", true)}
-              <label class="form-label">${t("duration")}</label>${hoursSelect("manual-hours", form.hours)}
-              <button class="btn small gray" data-action="manual-on" ${form.temperature == null ? "disabled" : ""}>${t("switch_on")}</button>
+              ${selectField(t("temperature"), "manual-temp", tempOptions(form.temperature, true))}
+              ${selectField(t("duration"), "manual-hours", hourOptions(form.hours))}
+              <div class="form-actions">
+                <button class="btn plain" data-action="toggle-manual-form">${t("cancel")}</button>
+                <button class="btn filled" data-action="manual-on" ${form.temperature == null ? "disabled" : ""}>${t("turn_on")}</button>
+              </div>
             </div>`
           : ""
       }`;
     }
     const vacation = live?.vacation
-      ? `<div class="box-line vacation">
-          <span><ha-icon icon="${MODE_ICONS.vacation}"></ha-icon> ${t("vacation_active", { temp: `<b>${fmtTemp(live.vacation.temperature)}</b>` })}${manualOn ? t("afterwards") : ""}</span>
-          <button class="btn small gray" data-action="vacation-off">${t("turn_off")}</button>
+      ? `<div class="status-row">
+          ${badge(MODE_ICONS.vacation, "var(--state-climate-cool-color, #2b9af9)")}
+          <div><div>${t("vacation_active", { temp: fmtTemp(live.vacation.temperature) })}</div>${manualOn ? `<div class="secondary">${t("afterwards")}</div>` : ""}</div>
+          <button class="btn plain" data-action="vacation-off">${t("end")}</button>
         </div>`
       : "";
-    return `<div class="box">${manual}${vacation}</div>`;
+    return `<div class="card">${manual}${vacation}</div>`;
   }
 
   _renderDay(day) {
@@ -659,25 +784,25 @@ class HeatingPanel extends HTMLElement {
     let details = "";
     if (open) {
       const edges = [0, ...entry.bounds, DAY_MINUTES];
-      const field = (prefix, idx, temp, from, to) => `<label class="temp-field">
-          <span class="muted">${prefix}${clock(from)}–${clock(to)}</span>
-          ${tempSelect("seg-temp", temp, `data-day="${day}" data-idx="${idx}" aria-label="${esc(t("range_label", { day: dayLong(day), from: prefix + clock(from), to: clock(to) }))}"`)}
-        </label>`;
+      const field = (prefix, idx, temp, from, to) => {
+        const label = `${prefix}${clock(from)}–${clock(to)}`;
+        const aria = t("range_label", { day: dayLong(day), from: prefix + clock(from), to: clock(to) });
+        return selectField(label, "seg-temp", tempOptions(temp), `data-day="${day}" data-idx="${idx}" aria-label="${esc(aria)}"`);
+      };
       // First and last period are the night around the 05:00 day start and share one temperature.
-      const temps =
+      const periods =
         [1, 2, 3].map((i) => field("", i, entry.temps[i], edges[i], edges[i + 1])).join("") +
         field(`${t("night")} `, "night", entry.temps[4], edges[4], edges[1]);
-      details = `<div class="day-details">
-        <div class="grid-row axis-row"><span></span>${this._renderAxis()}<span></span></div>
-        <div class="temps">${temps}</div>
-        ${this._renderCopy(day)}
-      </div>`;
+      details = `<div class="day-row axis-row"><span></span>${this._renderAxis()}<span></span></div>
+        <div class="periods indent">${periods}</div>
+        ${this._renderCopy(day)}`;
     }
     return `<div class="day ${open ? "open" : ""}">
-      <div class="grid-row">
+      <div class="day-row">
         <button class="day-label" data-action="toggle-day" data-day="${day}">${dayShort(day)}</button>
         ${this._renderBar(day, entry.bounds, entry.temps)}
-        <button class="day-toggle" data-action="toggle-day" data-day="${day}" aria-label="${t(open ? "collapse" : "expand", { day: dayLong(day) })}"><span class="caret ${open ? "down" : ""}"></span></button>
+        <button class="icon-btn day-toggle" data-action="toggle-day" data-day="${day}"
+          aria-label="${t(open ? "collapse" : "expand", { day: dayLong(day) })}" aria-expanded="${open}">${icon("mdi:chevron-down")}</button>
       </div>
       ${details}
     </div>`;
@@ -692,17 +817,17 @@ class HeatingPanel extends HTMLElement {
         const style = `left:${pct(start)}%;width:${pct(end - start)}%`;
         if (!temps) return `<div class="seg w${i}" style="${style}"></div>`;
         const temp = temps[i];
-        return `<div class="seg ${tempClass(temp)}" style="${style}" title="${clock(start)}–${clock(end)}: ${fmtTemp(temp)}"><span>${fmtTemp(temp)}</span></div>`;
+        return `<div class="seg ${tempTextClass(temp)}" style="${style};background:${tempColor(temp)}" title="${clock(start)}–${clock(end)}: ${fmtTemp(temp)}"><span>${fmtTemp(temp)}</span></div>`;
       })
       .join("");
-    const name = day === "week" ? t("week") : dayLong(day);
+    const name = day === "week" ? t("all_days") : dayLong(day);
     const handles = bounds
       .map(
         (bound, i) => `<div class="handle" data-handle="${day}:${i}" style="left:${pct(bound)}%" tabindex="0" role="slider"
-          aria-label="${t("boundary", { name, number: i + 1 })}" aria-valuetext="${clock(bound)}">${ARROWS}<span class="bubble">${clock(bound)}</span></div>`,
+          aria-label="${esc(t("boundary", { name, number: i + 1 }))}" aria-valuetext="${clock(bound)}"><span class="knob"></span><span class="bubble">${clock(bound)}</span></div>`,
       )
       .join("");
-    return `<div class="bar ${temps ? "" : "week-bar"}" data-bar="${day}"><div class="track">${segments}</div>${handles}</div>`;
+    return `<div class="bar" data-bar="${day}"><div class="track">${segments}</div>${handles}</div>`;
   }
 
   /** Update positions in place while dragging, so the pointer capture survives. */
@@ -735,24 +860,22 @@ class HeatingPanel extends HTMLElement {
     const workdays = WORKDAYS.filter((d) => d !== day);
     const selected = this._copyTargets;
     const option = (key, text, checked) =>
-      `<label class="copy-option">${checkbox(`data-change="copy-target" data-key="${key}" data-day="${day}"`, checked)}<span>${text}</span></label>`;
-    const label = selected.size
-      ? DAYS.filter((d) => selected.has(d)).map(dayShort).join(", ")
-      : t("select_days");
+      `<label class="menu-item">${checkbox(`data-change="copy-target" data-key="${key}" data-day="${day}"`, checked)}<span>${text}</span></label>`;
+    const label = selected.size ? DAYS.filter((d) => selected.has(d)).map(dayShort).join(", ") : t("copy_to");
     const menu = this._copyOpen
-      ? `<div class="copy-menu">
+      ? `<div class="menu">
           ${option("week", t("whole_week"), others.every((d) => selected.has(d)))}
           ${option("workdays", t("workdays"), workdays.every((d) => selected.has(d)))}
+          <div class="menu-divider"></div>
           ${others.map((d) => option(d, dayLong(d), selected.has(d))).join("")}
         </div>`
       : "";
-    return `<div class="copy-row">
-      <span class="muted">${t("copy_to")}</span>
-      <div class="copy-select">
-        <button class="select select-btn" data-action="toggle-copy">${label}</button>
+    return `<div class="copy-row indent">
+      <div class="copy-wrap">
+        <button class="btn outlined small" data-action="toggle-copy" aria-expanded="${this._copyOpen}">${icon("mdi:content-copy")}<span>${esc(label)}</span>${icon("mdi:menu-down")}</button>
         ${menu}
       </div>
-      <button class="btn small gray" data-action="do-copy" data-day="${day}" ${selected.size ? "" : "disabled"}>${t("copy")}</button>
+      <button class="btn filled small" data-action="do-copy" data-day="${day}" ${selected.size ? "" : "disabled"}>${t("copy")}</button>
     </div>`;
   }
 
@@ -760,7 +883,7 @@ class HeatingPanel extends HTMLElement {
 
   async _onClick(ev) {
     let render = false;
-    if (this._copyOpen && !ev.target.closest(".copy-select")) {
+    if (this._copyOpen && !ev.target.closest(".copy-wrap")) {
       this._copyOpen = false;
       render = true;
     }
@@ -771,6 +894,17 @@ class HeatingPanel extends HTMLElement {
     }
     const zoneId = el.dataset.zone;
     switch (el.dataset.action) {
+      case "menu":
+        this.dispatchEvent(new CustomEvent("hass-toggle-menu", { bubbles: true, composed: true }));
+        return;
+      case "dialog-cancel":
+      case "dialog-confirm": {
+        const dialog = this._dialog;
+        this._dialog = null;
+        this._render();
+        dialog?.resolve(el.dataset.action === "dialog-confirm");
+        return;
+      }
       case "open-config": {
         const type = el.dataset.type;
         let selected = this._zones.filter((z) => type !== "vacation" || !z.vacation).map((z) => z.id);
@@ -794,11 +928,29 @@ class HeatingPanel extends HTMLElement {
         if (ok) this._config = null;
         break;
       }
+      case "end-all": {
+        const manual = el.dataset.type === "manual";
+        const ids = this._zones.filter((z) => (manual ? z.status.mode === "manual" : z.vacation)).map((z) => z.id);
+        if (ids.length) {
+          await this._call(
+            { type: `${DOMAIN}/${manual ? "manual" : "vacation"}/clear`, zone_ids: ids },
+            t(manual ? "toast_manual_off" : "toast_vacation_off"),
+          );
+        }
+        break;
+      }
+      case "toggle-select":
+        if (this._config.selected.has(zoneId)) this._config.selected.delete(zoneId);
+        else this._config.selected.add(zoneId);
+        break;
       case "clear-override": {
         const zone = this._zone(zoneId);
         if (!zone) break;
         const kind = zone.status.mode === "manual" ? "manual" : "vacation";
-        await this._call({ type: `${DOMAIN}/${kind}/clear`, zone_ids: [zone.id] });
+        await this._call(
+          { type: `${DOMAIN}/${kind}/clear`, zone_ids: [zone.id] },
+          t(kind === "manual" ? "toast_manual_off" : "toast_vacation_off"),
+        );
         break;
       }
       case "manage": {
@@ -810,22 +962,20 @@ class HeatingPanel extends HTMLElement {
         const day = { bounds: [...DEFAULT_BOUNDS], temps: [...units.defaultDay] };
         const schedule = Object.fromEntries(DAYS.map((d) => [d, clone(day)]));
         this._openEditor({ id: null, name: t("new_zone"), entities: [], schedule });
-        this._editingName = true;
-        this._showEntities = true;
+        this._focusName = true;
+        this._entitiesOpen = true;
         break;
       }
-      case "edit-name":
-        this._editingName = true;
-        break;
       case "toggle-entities":
-        this._showEntities = !this._showEntities;
+        this._entitiesOpen = !this._entitiesOpen;
         break;
-      case "cancel-edit":
-        if (this._dirty() && !confirm(t("confirm_discard"))) return;
+      case "back":
+        if (this._dirty() && !(await this._confirm(t("discard_title"), t("discard_text"), t("discard"), true))) return;
         this._closeEditor();
         break;
       case "delete-zone": {
-        if (!confirm(t("confirm_delete", { name: this._draft.name }))) return;
+        const name = this._draft.name;
+        if (!(await this._confirm(t("delete_title"), t("delete_text", { name }), t("delete"), true))) return;
         const [ok] = await this._call({ type: `${DOMAIN}/zone/delete`, zone_id: this._draft.id }, t("toast_deleted"));
         if (ok) this._closeEditor();
         break;
@@ -887,10 +1037,6 @@ class HeatingPanel extends HTMLElement {
       case "cfg-hours":
         this._config.hours = Number(el.value);
         break;
-      case "cfg-zone":
-        if (el.checked) this._config.selected.add(el.dataset.zone);
-        else this._config.selected.delete(el.dataset.zone);
-        break;
       case "manual-temp":
         this._manualForm.temperature = el.value === "" ? null : Number(el.value);
         break;
@@ -930,22 +1076,21 @@ class HeatingPanel extends HTMLElement {
   }
 
   _onInput(ev) {
-    if (ev.target.dataset?.input === "entity-filter") {
+    const kind = ev.target.dataset?.input;
+    if (kind === "entity-filter") {
       this._entityFilter = ev.target.value;
       this._applyEntityFilter();
+    } else if (kind === "name") {
+      this._draft.name = ev.target.value;
+      this.shadowRoot.querySelector(".toolbar .title").textContent = ev.target.value.trim() || t("new_zone");
     }
-  }
-
-  _onFocusOut(ev) {
-    if (ev.target.dataset?.input === "name" && this._editingName) {
-      this._commitName(ev.target.value);
-      this._requestRender();
-      return;
-    }
-    if (this._pendingRender) setTimeout(() => this._requestRender(), 0);
   }
 
   _onKeyDown(ev) {
+    if (this._dialog && ev.key === "Escape") {
+      this.shadowRoot.querySelector("[data-action=dialog-cancel]")?.click();
+      return;
+    }
     const handle = ev.target.closest?.("[data-handle]");
     if (handle) {
       const delta = { ArrowLeft: -STEP, ArrowDown: -STEP, ArrowRight: STEP, ArrowUp: STEP }[ev.key];
@@ -958,12 +1103,13 @@ class HeatingPanel extends HTMLElement {
       this.shadowRoot.querySelector(`[data-handle="${day}:${idx}"]`)?.focus();
       return;
     }
-    if (ev.target.dataset?.input === "name") {
-      if (ev.key === "Enter") ev.target.blur();
-      if (ev.key === "Escape") {
-        this._editingName = false;
-        this._render();
-      }
+    if (ev.target.getAttribute?.("role") === "button" && (ev.key === "Enter" || ev.key === " ")) {
+      ev.preventDefault();
+      ev.target.click();
+      return;
+    }
+    if (ev.target.dataset?.input === "name" && ev.key === "Enter") {
+      ev.target.blur();
       return;
     }
     if (ev.key === "Escape" && this._copyOpen) {
@@ -1035,21 +1181,14 @@ class HeatingPanel extends HTMLElement {
     }
   }
 
-  _commitName(value) {
-    const name = value.trim();
-    if (name) this._draft.name = name;
-    this._editingName = false;
-  }
-
   _openEditor(draft) {
     this._view = "edit";
     this._draft = draft;
     this._original = JSON.stringify(draft);
     this._weekBounds = [...draft.schedule.mon.bounds];
     this._openDay = "mon";
-    this._showEntities = false;
+    this._entitiesOpen = false;
     this._entityFilter = "";
-    this._editingName = false;
     this._manualForm = null;
     this._copyOpen = false;
     this._copyTargets = new Set();
@@ -1061,249 +1200,332 @@ class HeatingPanel extends HTMLElement {
     this._view = "list";
     this._draft = null;
     this._original = null;
-    this._editingName = false;
+    this.scrollTop = 0;
   }
 
   async _save() {
-    const input = this.shadowRoot.querySelector("[data-input=name]");
-    if (input) this._commitName(input.value);
     const draft = this._draft;
-    if (!draft.name.trim()) {
+    const name = draft.name.trim();
+    if (!name) {
       this._showToast(t("name_required"), true);
       return;
     }
-    const zone = { name: draft.name, entities: draft.entities, schedule: draft.schedule };
+    const zone = { name, entities: draft.entities, schedule: draft.schedule };
     if (draft.id) zone.id = draft.id;
-    const [ok] = await this._call({ type: `${DOMAIN}/zone/save`, zone }, t("toast_saved", { name: draft.name }));
+    const [ok] = await this._call({ type: `${DOMAIN}/zone/save`, zone }, t("toast_saved", { name }));
     if (ok) this._closeEditor();
   }
 }
 
 const STYLE = `
 :host {
-  --hp-page: #111;
-  --hp-card: #262626;
-  --hp-row: #1a1a1a;
-  --hp-black: #000;
-  --hp-border: #3a3a3a;
-  --hp-text: #ececec;
-  --hp-muted: #8c8c8c;
-  --hp-accent: #3a9ae0;
-  --hp-handle: #1e8fff;
-  --hp-ok: #2e8b22;
-  --hp-hot: #a8231f;
-  --hp-cold: #1f6fb5;
+  --hp-primary: var(--primary-color, #03a9f4);
+  --hp-on-primary: var(--text-primary-color, #fff);
+  --hp-text: var(--primary-text-color, #212121);
+  --hp-secondary: var(--secondary-text-color, #727272);
+  --hp-disabled: var(--disabled-text-color, #bdbdbd);
+  --hp-bg: var(--primary-background-color, #fafafa);
+  --hp-card: var(--ha-card-background, var(--card-background-color, #fff));
+  --hp-divider: var(--divider-color, rgba(0, 0, 0, 0.12));
+  --hp-fill: var(--input-fill-color, var(--secondary-background-color, #f5f5f5));
+  --hp-line: var(--input-idle-line-color, rgba(0, 0, 0, 0.42));
+  --hp-error: var(--error-color, #db4437);
+  --hp-warning: var(--warning-color, #ffa600);
+  --hp-radius: var(--ha-card-border-radius, 12px);
+  --hp-hover: color-mix(in srgb, var(--hp-text) 6%, transparent);
   display: block;
   height: 100%;
   overflow-y: auto;
-  background: var(--hp-page);
+  background: var(--hp-bg);
   color: var(--hp-text);
-  color-scheme: dark;
-  font-family: var(--paper-font-body1_-_font-family, Roboto, "Helvetica Neue", Arial, sans-serif);
+  font-family: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, Roboto, Noto, sans-serif));
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-ha-icon { --mdc-icon-size: 24px; }
 button { font: inherit; color: inherit; }
+ha-icon { --mdc-icon-size: 24px; display: inline-flex; flex: none; }
 
+/* top bar like the other Home Assistant pages */
 .toolbar {
-  position: sticky; top: 0; z-index: 20;
+  position: sticky; top: 0; z-index: 4;
   display: flex; align-items: center; gap: 4px;
-  height: 56px; padding: 0 12px;
-  background: linear-gradient(#2b8ad6, #0c4f8c);
-  color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.5);
+  height: var(--header-height, 56px); padding: 0 4px 0 16px;
+  background: var(--app-header-background-color, var(--hp-primary));
+  color: var(--app-header-text-color, var(--hp-on-primary));
+  border-bottom: var(--app-header-border-bottom, none);
 }
-.toolbar .menu { display: none; }
-:host([narrow]) .toolbar .menu { display: block; }
-.toolbar .title { font-size: 18px; font-weight: 500; padding-left: 8px; }
+.toolbar.has-leading { padding-left: 4px; }
+.toolbar .title {
+  flex: 1; min-width: 0; margin-left: 8px;
+  font-size: 20px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toolbar:not(.has-leading) .title { margin-left: 0; }
 
-.content { max-width: 860px; margin: 16px auto 40px; padding: 0 16px; }
-.card { background: var(--hp-card); border: 1px solid var(--hp-border); border-radius: 4px; padding: 0 0 24px; }
-.empty { padding: 32px 24px; color: var(--hp-muted); text-align: center; line-height: 1.5; }
-.muted { color: var(--hp-muted); }
+.content { padding: 16px 16px 104px; }
+.page { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.editor { max-width: 900px; }
+
+/* cards */
+.card {
+  background: var(--hp-card);
+  border-radius: var(--hp-radius);
+  border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--hp-divider));
+  box-shadow: var(--ha-card-box-shadow, none);
+}
+.card-header { padding: 16px 16px 8px; font-size: 20px; font-weight: 400; line-height: 28px; }
+.card-subtitle { font-size: 14px; color: var(--hp-secondary); line-height: 20px; }
+.card-content { padding: 16px; }
+.card-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
+  padding: 8px; border-top: 1px solid var(--hp-divider); margin-top: auto;
+}
+.secondary { color: var(--hp-secondary); }
 .small { font-size: 12px; }
-.center { display: flex; justify-content: center; padding-top: 8px; }
+.empty { padding: 32px 24px; text-align: center; color: var(--hp-secondary); line-height: 1.5; }
+.empty ha-icon { --mdc-icon-size: 48px; color: var(--hp-disabled); }
+.empty p { margin: 8px auto 0; max-width: 420px; }
 
 /* buttons */
-.btn { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
-.btn:disabled { opacity: .45; cursor: default; }
-.btn.pill {
-  min-width: 130px; padding: 9px 22px; border-radius: 22px; font-weight: 700;
-  background: linear-gradient(#2f80c8, #0e4b88); border-color: #6aaae6; color: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.6);
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 16px; border-radius: 18px; border: 0;
+  font-size: 14px; font-weight: 500; letter-spacing: 0.1px; white-space: nowrap;
+  cursor: pointer; background: transparent;
 }
-.btn.pill:not(:disabled):hover { background: linear-gradient(#3a90da, #125aa0); }
-.btn.pill.outline { background: transparent; border-color: #bbb; }
-.btn.small { padding: 5px 12px; border-radius: 3px; font-size: 13px; }
-.btn.blue { background: linear-gradient(#2e8be0, #1062b2); border-color: #0b4c8c; color: #fff; }
-.btn.blue.pressed { box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
-.btn.gray { background: linear-gradient(#444, #2c2c2c); border-color: #555; color: #ddd; }
-.btn.red { background: linear-gradient(#d23a3a, #a01c1c); border-color: #7a1212; color: #fff; }
-.btn.green { background: linear-gradient(#3a9a3e, #22702a); border-color: #185a1e; color: #fff; }
-.btn.off { padding: 5px 10px; border-radius: 3px; background: #333; border-color: #555; color: #bbb; font-size: 12px; }
-.icon-btn { background: none; border: 0; color: var(--hp-muted); cursor: pointer; padding: 4px; }
-.link { background: none; border: 0; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
-.link:disabled { opacity: .45; cursor: default; }
-.caret { display: inline-block; width: 0; height: 0; border-style: solid; border-width: 7px 9px 7px 0; border-color: transparent #888 transparent transparent; }
-.caret.down { border-width: 9px 7px 0 7px; border-color: #888 transparent transparent transparent; }
+.btn ha-icon { --mdc-icon-size: 18px; }
+.btn.small { height: 32px; padding: 0 12px; }
+.btn.plain { color: var(--hp-primary); }
+.btn.plain:not(:disabled):hover { background: color-mix(in srgb, var(--hp-primary) 10%, transparent); }
+.btn.filled { background: var(--hp-primary); color: var(--hp-on-primary); }
+.btn.filled:not(:disabled):hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+.btn.outlined { color: var(--hp-primary); border: 1px solid var(--hp-divider); }
+.btn.outlined:not(:disabled):hover { background: color-mix(in srgb, var(--hp-primary) 8%, transparent); }
+.btn.danger { color: var(--hp-error); }
+.btn.plain.danger:not(:disabled):hover { background: color-mix(in srgb, var(--hp-error) 10%, transparent); }
+.btn:disabled { opacity: 0.38; cursor: default; }
+.btn:focus-visible, .icon-btn:focus-visible, .zone-row:focus-visible, .day-label:focus-visible {
+  outline: 2px solid var(--hp-primary); outline-offset: 2px;
+}
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; border-radius: 50%; border: 0; padding: 0;
+  background: transparent; color: inherit; cursor: pointer;
+}
+.icon-btn:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.fab {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+  display: inline-flex; align-items: center; gap: 12px;
+  height: 56px; padding: 0 20px 0 16px; border: 0; border-radius: 16px;
+  background: var(--hp-primary); color: var(--hp-on-primary);
+  font-size: 14px; font-weight: 500; letter-spacing: 0.1px; cursor: pointer;
+  box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14), 0 1px 18px 0 rgba(0, 0, 0, 0.12);
+}
+.fab:hover { filter: brightness(1.05); }
 
-/* form controls */
-.select {
-  background: var(--hp-black); color: var(--hp-accent); border: 1px solid #222; border-radius: 2px;
-  padding: 6px 8px; font: inherit; min-width: 110px; cursor: pointer;
+/* round icon like on tiles */
+.badge {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; border-radius: 50%;
+  color: var(--badge-color);
+  background: color-mix(in srgb, var(--badge-color) 20%, transparent);
 }
+
+/* form fields like Home Assistant text fields */
+.field {
+  position: relative; display: flex; flex-direction: column; justify-content: center;
+  min-width: 140px; min-height: 56px; padding: 6px 12px 4px;
+  background: var(--hp-fill); border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid var(--hp-line);
+}
+.field:focus-within { border-bottom: 2px solid var(--hp-primary); padding-bottom: 3px; }
+.field-label { font-size: 12px; color: var(--hp-secondary); line-height: 16px; }
+.field:focus-within .field-label { color: var(--hp-primary); }
+.field select, .field input {
+  appearance: none; -webkit-appearance: none; width: 100%;
+  border: 0; outline: none; background: transparent; color: var(--hp-text);
+  font: inherit; font-size: 16px; padding: 2px 0 4px;
+}
+.field select { padding-right: 24px; cursor: pointer; }
+.field select option { background: var(--hp-card); color: var(--hp-text); }
+.field.select::after {
+  content: ""; position: absolute; right: 12px; top: 50%; margin-top: -2px; pointer-events: none;
+  border: 5px solid transparent; border-top-color: var(--hp-secondary);
+}
+.field.text input::placeholder { color: var(--hp-secondary); }
+.field.search { flex-direction: row; align-items: center; gap: 8px; min-height: 48px; padding-top: 4px; }
+.field.search ha-icon { color: var(--hp-secondary); }
+
 .check {
-  appearance: none; -webkit-appearance: none; flex: none;
-  width: 22px; height: 22px; margin: 0; cursor: pointer;
-  background: #151515; border: 1px solid #555; border-radius: 3px;
+  appearance: none; -webkit-appearance: none; flex: none; position: relative;
+  width: 18px; height: 18px; margin: 3px; cursor: pointer;
+  border: 2px solid var(--hp-secondary); border-radius: 2px; background: transparent;
 }
-.check:checked {
-  background: #151515 center / 16px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233a9ae0' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E");
+.check:checked { background: var(--hp-primary); border-color: var(--hp-primary); }
+.check:checked::after {
+  content: ""; position: absolute; left: 4px; top: 0; width: 5px; height: 10px;
+  border: solid var(--hp-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
-.check:disabled { opacity: .35; cursor: default; }
-.form-grid { display: grid; grid-template-columns: auto auto; gap: 8px 12px; align-items: center; justify-content: start; margin: 12px 0 4px; }
-.form-label { color: var(--hp-muted); font-size: 13px; }
+.check:disabled { opacity: 0.38; cursor: default; }
 
 /* mode cards */
-.modes { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--hp-border); }
-.mode-card { display: flex; gap: 20px; padding: 24px 20px 20px; }
-.mode-card + .mode-card { border-left: 1px solid var(--hp-border); }
-.big-icon { --mdc-icon-size: 48px; color: #fff; flex: none; }
-.mode-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.mode-title { font-size: 16px; margin-bottom: 10px; }
-.mode-text { color: var(--hp-muted); font-size: 12px; line-height: 1.6; }
-.mode-hint { color: var(--hp-muted); font-size: 12px; margin-top: 6px; }
-.mode-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.mode-card { display: flex; flex-direction: column; }
+.mode-head { display: flex; align-items: center; gap: 16px; padding: 16px 16px 8px; }
+.mode-title { font-size: 16px; font-weight: 500; }
+.mode-active { font-size: 14px; color: var(--hp-primary); font-weight: 500; }
+.mode-text { padding: 4px 16px 16px; color: var(--hp-secondary); line-height: 20px; }
+.mode-form { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 16px; }
+.mode-form .field { flex: 1; }
 
 /* zone list */
-.zones { display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 20px; }
+.zone-list { padding-bottom: 8px; }
 .zone-row {
-  display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1.5fr) auto;
-  grid-template-areas: "name temp mode actions"; gap: 12px; align-items: center;
-  min-height: 52px; padding: 8px 24px 8px 16px;
-  background: var(--hp-row); border: 1px solid var(--hp-border); border-radius: 26px;
+  display: flex; align-items: center; gap: 16px;
+  min-height: 64px; padding: 8px 8px 8px 16px; cursor: pointer;
 }
-.zone-name { grid-area: name; font-weight: 700; display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
-.warn { color: #e0a030; font-weight: 400; font-size: 11px; }
-.zone-temp { grid-area: temp; display: flex; flex-direction: column; align-items: flex-end; }
-.zone-temp .target { font-size: 18px; }
-.zone-temp .current { color: var(--hp-muted); font-size: 11px; }
-.zone-mode { grid-area: mode; display: flex; align-items: center; gap: 8px; color: var(--hp-accent); min-width: 0; }
-.zone-mode ha-icon { --mdc-icon-size: 28px; flex: none; }
-.zone-actions { grid-area: actions; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.zone-row + .zone-row { border-top: 1px solid var(--hp-divider); }
+.zone-row:hover { background: var(--hp-hover); }
+.zone-row.selected { background: color-mix(in srgb, var(--hp-primary) 8%, transparent); }
+.zone-info { flex: 1; min-width: 0; }
+.zone-name { font-size: 16px; overflow-wrap: anywhere; }
+.zone-info .secondary { margin-top: 2px; }
+.warn { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--hp-warning); font-size: 12px; }
+.warn ha-icon { --mdc-icon-size: 16px; }
+.zone-target { font-size: 22px; font-weight: 400; white-space: nowrap; }
+.zone-trailing { display: flex; align-items: center; gap: 4px; min-width: 40px; justify-content: flex-end; }
+.zone-trailing .check { margin-right: 8px; pointer-events: none; }
+.chevron { display: inline-flex; color: var(--hp-secondary); padding: 0 4px; }
 
 /* editor */
-.editor { padding: 24px 20px; }
-.ed-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.ed-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.ed-title h1 { margin: 0; font-size: 24px; font-weight: 400; overflow-wrap: anywhere; }
-.name-input { font: inherit; font-size: 22px; background: var(--hp-black); color: var(--hp-text); border: 1px solid var(--hp-accent); border-radius: 3px; padding: 4px 8px; width: min(320px, 100%); }
-.ed-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
-.dirty { color: #e0a030; font-size: 12px; text-align: right; margin: -8px 0 12px; }
-.box { background: var(--hp-black); border: 1px solid var(--hp-border); padding: 20px; margin-bottom: 16px; }
-.box-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 16px; }
-.box-line + .box-line { margin-top: 16px; padding-top: 16px; border-top: 1px solid #222; }
-.box-line.vacation ha-icon { color: var(--hp-accent); --mdc-icon-size: 20px; vertical-align: -4px; }
-.manual-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #222; }
-.manual-form .btn { margin-left: auto; }
-
-.box-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 16px; }
-.search { background: #111; color: var(--hp-text); border: 1px solid #444; border-radius: 3px; padding: 6px 10px; font: inherit; width: min(240px, 100%); }
-.entity-list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; }
-.entity { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid #1d1d1d; cursor: pointer; }
-.entity.taken { cursor: default; opacity: .6; }
-.entity-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.entity-name { overflow-wrap: anywhere; }
-.entity-id { color: var(--hp-muted); font-size: 11px; overflow-wrap: anywhere; }
-.entity-temp { color: var(--hp-muted); font-size: 12px; }
-
-/* schedule */
-.schedule { border: 1px solid var(--hp-border); background: var(--hp-card); }
-.grid-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 36px; align-items: center; }
-.day { background: var(--hp-black); border-bottom: 1px solid var(--hp-border); padding: 18px 8px 14px; }
-.day.open { background: var(--hp-card); }
-.day.week { background: var(--hp-card); border-bottom: 0; border-top: 1px solid var(--hp-border); }
-.day-label { background: none; border: 0; padding: 0 0 0 8px; text-align: left; font-weight: 700; font-size: 13px; cursor: pointer; }
-.day.week .day-label { cursor: default; }
-.day-toggle { background: none; border: 0; cursor: pointer; display: flex; justify-content: center; padding: 6px 0; }
-.week-hint { color: var(--hp-muted); font-size: 11px; padding: 10px 0 0 52px; }
-
-.bar { position: relative; height: 32px; margin: 0 14px; }
-.track { position: absolute; left: 0; right: 0; top: 5px; height: 22px; border-radius: 11px; overflow: hidden; }
-.seg {
-  position: absolute; top: 0; height: 100%; overflow: hidden;
-  color: #fff; font-weight: 700; font-size: 12px; line-height: 22px; text-align: center; white-space: nowrap;
+.subheader { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 8px; font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 8px;
+  border: 1px solid var(--hp-divider); border-radius: 8px; font-size: 14px;
 }
-.seg span { padding: 0 2px; }
-.seg.ok { background: var(--hp-ok); }
-.seg.hot { background: var(--hp-hot); }
-.seg.cold { background: var(--hp-cold); }
-.seg.w0 { background: #4a4a4a; } .seg.w1 { background: #666; } .seg.w2 { background: #8a8a8a; } .seg.w3 { background: #b4b4b4; } .seg.w4 { background: #dedede; }
+.chip ha-icon { --mdc-icon-size: 18px; color: var(--hp-primary); }
+.entity-picker { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.entity-list { max-height: 320px; overflow-y: auto; }
+.entity { display: flex; align-items: center; gap: 16px; padding: 8px 4px; cursor: pointer; border-radius: 8px; }
+.entity:hover { background: var(--hp-hover); }
+.entity.taken { cursor: default; opacity: 0.55; }
+.entity-text { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.status-row { display: flex; align-items: center; gap: 16px; padding: 12px 8px 12px 16px; min-height: 64px; }
+.status-row > div { flex: 1; min-width: 0; }
+.status-row + .status-row { border-top: 1px solid var(--hp-divider); }
+.manual-form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 16px 16px 72px; }
+.manual-form .field { flex: 1; }
+.form-actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* weekly schedule */
+.schedule { padding-bottom: 8px; }
+.day { padding: 4px 4px 4px 16px; border-top: 1px solid var(--hp-divider); }
+.day.open { background: color-mix(in srgb, var(--hp-primary) 5%, transparent); padding-bottom: 16px; }
+.day-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 40px; gap: 8px; align-items: center; }
+.indent { padding-left: 60px; padding-right: 48px; }
+.day-label {
+  background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
+  font-size: 14px; font-weight: 500; color: var(--hp-text);
+}
+.all-days .day-label { cursor: default; font-weight: 400; color: var(--hp-secondary); }
+.all-days .indent { padding-top: 2px; padding-bottom: 8px; }
+.day-toggle { color: var(--hp-secondary); }
+.day-toggle ha-icon { transition: transform 0.2s; }
+.day.open .day-toggle ha-icon { transform: rotate(180deg); }
+
+.bar { position: relative; height: 48px; margin: 0 6px; }
+.track {
+  position: absolute; left: 0; right: 0; top: 8px; height: 32px;
+  border-radius: 8px; overflow: hidden; background: var(--hp-fill);
+}
+.seg {
+  position: absolute; top: 0; height: 100%; container-type: inline-size;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  color: #fff; font-size: 12px; font-weight: 500; white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+@container (max-width: 52px) { .seg span { display: none; } }
+.seg.dark-text { color: rgba(0, 0, 0, 0.8); text-shadow: none; }
+.seg.w0 { background: color-mix(in srgb, var(--hp-primary) 18%, var(--hp-fill)); }
+.seg.w1 { background: color-mix(in srgb, var(--hp-primary) 32%, var(--hp-fill)); }
+.seg.w2 { background: color-mix(in srgb, var(--hp-primary) 46%, var(--hp-fill)); }
+.seg.w3 { background: color-mix(in srgb, var(--hp-primary) 60%, var(--hp-fill)); }
+.seg.w4 { background: color-mix(in srgb, var(--hp-primary) 74%, var(--hp-fill)); }
 .handle {
-  position: absolute; top: 2px; width: 28px; height: 28px; margin-left: -14px; z-index: 2;
-  border-radius: 50%; background: var(--hp-handle); box-shadow: 0 1px 3px rgba(0,0,0,.7);
+  position: absolute; top: 0; z-index: 2; width: 28px; height: 48px; margin-left: -14px;
   display: flex; align-items: center; justify-content: center;
   cursor: ew-resize; touch-action: none; outline: none;
 }
-.handle svg { width: 22px; height: 22px; fill: #fff; pointer-events: none; }
-.handle:focus-visible { box-shadow: 0 0 0 3px rgba(255,255,255,.6); }
-.handle.dragging { z-index: 3; transform: scale(1.12); }
+.knob {
+  width: 8px; height: 40px; border-radius: 4px; background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.1s;
+}
+.handle:hover .knob, .handle.dragging .knob { transform: scaleX(1.3); }
+.handle:focus-visible .knob { box-shadow: 0 0 0 2px var(--hp-primary), 0 1px 3px rgba(0, 0, 0, 0.4); }
 .bubble {
-  display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-  background: #000; border: 1px solid var(--hp-handle); border-radius: 3px; padding: 2px 6px;
-  font-size: 12px; color: #fff; white-space: nowrap; pointer-events: none;
+  display: none; position: absolute; bottom: calc(100% - 2px); left: 50%; transform: translateX(-50%); z-index: 3;
+  padding: 4px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none;
+  background: rgba(97, 97, 97, 0.95); color: #fff; font-size: 12px;
 }
 .handle:hover .bubble, .handle:focus-visible .bubble, .handle.dragging .bubble { display: block; }
 
-.day-details { margin-top: 10px; }
-.axis-row { padding: 10px 8px; border-top: 1px solid #3a3a3a; }
-.day-details .axis-row { padding: 10px 0; border-bottom: 1px solid #3a3a3a; }
-.axis { position: relative; height: 16px; margin: 0 14px; }
-.tick { position: absolute; transform: translateX(-50%); color: var(--hp-muted); font-size: 12px; white-space: nowrap; }
-.temps { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px 16px; padding: 14px 36px 14px 52px; border-bottom: 1px solid #3a3a3a; }
-.temp-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.temp-field .select { width: 100%; }
-.copy-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 36px 0 52px; }
-.copy-select { position: relative; flex: 1; min-width: 180px; max-width: 240px; }
-.select-btn { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.copy-menu {
-  position: absolute; top: calc(100% + 2px); left: 0; z-index: 10; min-width: 100%;
-  background: #000; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,.7); padding: 6px 0;
+.axis-row { margin-top: -4px; }
+.axis { position: relative; height: 16px; margin: 0 6px; }
+.tick { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--hp-secondary); white-space: nowrap; }
+.periods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+.copy-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.copy-wrap { position: relative; }
+.copy-wrap .btn span { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 6; min-width: 220px; padding: 8px 0;
+  background: var(--hp-card); border-radius: 4px;
+  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
 }
-.copy-option { display: flex; align-items: center; gap: 12px; padding: 7px 14px; cursor: pointer; font-weight: 700; font-size: 13px; white-space: nowrap; }
-.copy-option:hover { background: #1e8fff; }
+.menu-item { display: flex; align-items: center; gap: 16px; height: 48px; padding: 0 16px; cursor: pointer; white-space: nowrap; }
+.menu-item:hover { background: var(--hp-hover); }
+.menu-divider { height: 1px; margin: 8px 0; background: var(--hp-divider); }
 
+/* dialog and snackbar */
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.32); padding: 16px;
+}
+.dialog {
+  width: min(480px, 100%); padding: 24px 24px 12px;
+  background: var(--mdc-theme-surface, var(--hp-card)); color: var(--hp-text);
+  border-radius: var(--ha-dialog-border-radius, 24px);
+  box-shadow: 0 11px 15px -7px rgba(0, 0, 0, 0.2), 0 24px 38px 3px rgba(0, 0, 0, 0.14);
+}
+.dialog-title { font-size: 22px; line-height: 28px; margin-bottom: 12px; }
+.dialog-text { color: var(--hp-secondary); line-height: 20px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .toast {
-  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50;
-  max-width: calc(100% - 32px); padding: 10px 18px; border-radius: 4px;
-  background: #2b2b2b; border: 1px solid #555; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.6);
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 11;
+  transform: translateX(-50%); max-width: calc(100% - 32px); min-width: 280px;
+  padding: 14px 16px; border-radius: 4px;
+  background: #323232; color: #fff; box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14);
 }
-.toast.error { background: #6b1414; border-color: #a33; }
+.toast.error { background: var(--hp-error); }
 
-@media (max-width: 640px) {
-  .content { padding: 0 8px; margin-top: 8px; }
-  .modes { grid-template-columns: 1fr; }
-  .mode-card + .mode-card { border-left: 0; border-top: 1px solid var(--hp-border); }
-  .mode-card { padding: 18px 16px 16px; gap: 14px; }
-  .big-icon { --mdc-icon-size: 36px; }
-  .btn.pill { min-width: 0; padding: 8px 18px; }
-  .zones { padding: 12px 8px 16px; gap: 10px; }
-  .zone-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "name temp" "mode actions";
-    padding: 10px 14px; border-radius: 20px;
-  }
-  .editor { padding: 16px 10px; }
-  .box { padding: 14px; }
-  .grid-row { grid-template-columns: 34px minmax(0, 1fr) 28px; }
-  .day { padding: 16px 4px 12px; }
-  .day-label { padding-left: 4px; }
+@media (max-width: 600px) {
+  .content { padding: 8px 8px 96px; }
+  .page { gap: 8px; }
+  .modes { grid-template-columns: 1fr; gap: 8px; }
+  .zone-row { gap: 12px; padding-left: 12px; }
+  .zone-target { font-size: 18px; }
+  .btn.end span { display: none; }
+  .btn.end { padding: 0 8px; }
+  .day { padding-left: 8px; padding-right: 0; }
+  .day-row { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 4px; }
+  .indent { padding-left: 0; padding-right: 8px; }
+  .periods { grid-template-columns: 1fr 1fr; }
   .tick.minor { display: none; }
-  .temps, .copy-row { padding-left: 0; padding-right: 0; }
-  .temps { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-  .week-hint { padding-left: 34px; }
-  .seg { font-size: 11px; }
+  .manual-form { padding-left: 16px; }
+  .fab span { display: none; }
+  .fab { width: 56px; padding: 0; justify-content: center; }
 }
 `;
 
