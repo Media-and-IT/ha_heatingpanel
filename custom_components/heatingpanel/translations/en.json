@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heating Panel",
+        "description": "Sets up the heating panel. Afterwards create zones and schedules via the “Heizung” entry in the sidebar."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "The heating panel is already set up."
+    }
+  },
+  "services": {
+    "set_vacation": {
+      "name": "Turn on vacation mode",
+      "description": "Holds the zones at a fixed temperature until vacation mode is turned off.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "Zone names. Leave empty for all zones."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature in °C."
+        }
+      }
+    },
+    "clear_vacation": {
+      "name": "Turn off vacation mode",
+      "description": "Ends vacation mode.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "Zone names. Leave empty for all zones."
+        }
+      }
+    },
+    "set_manual": {
+      "name": "Turn on manual mode",
+      "description": "Sets the zones to a fixed temperature for a while.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "Zone names. Leave empty for all zones."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature in °C."
+        },
+        "hours": {
+          "name": "Duration",
+          "description": "Duration in hours."
+        }
+      }
+    },
+    "clear_manual": {
+      "name": "Turn off manual mode",
+      "description": "Ends manual mode, the schedule applies again.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "Zone names. Leave empty for all zones."
+        }
+      }
+    }
+  }
+}

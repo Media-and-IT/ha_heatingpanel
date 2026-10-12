@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heizungssteuerung",
+        "description": "Richtet die Heizungssteuerung ein. Zonen und Zeitpläne legst du danach im Menüpunkt „Heizung“ in der Seitenleiste an."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Die Heizungssteuerung ist bereits eingerichtet."
+    }
+  },
+  "services": {
+    "set_vacation": {
+      "name": "Urlaubsmodus einschalten",
+      "description": "Hält die Zonen auf einer festen Temperatur, bis der Urlaubsmodus ausgeschaltet wird.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Namen der Zonen. Leer lassen für alle Zonen."
+        },
+        "temperature": {
+          "name": "Temperatur",
+          "description": "Zieltemperatur in °C."
+        }
+      }
+    },
+    "clear_vacation": {
+      "name": "Urlaubsmodus ausschalten",
+      "description": "Beendet den Urlaubsmodus.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Namen der Zonen. Leer lassen für alle Zonen."
+        }
+      }
+    },
+    "set_manual": {
+      "name": "Manuellen Modus einschalten",
+      "description": "Setzt die Zonen für eine bestimmte Zeit auf eine feste Temperatur.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Namen der Zonen. Leer lassen für alle Zonen."
+        },
+        "temperature": {
+          "name": "Temperatur",
+          "description": "Zieltemperatur in °C."
+        },
+        "hours": {
+          "name": "Dauer",
+          "description": "Dauer in Stunden."
+        }
+      }
+    },
+    "clear_manual": {
+      "name": "Manuellen Modus ausschalten",
+      "description": "Beendet den manuellen Modus, der Zeitplan gilt wieder.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Namen der Zonen. Leer lassen für alle Zonen."
+        }
+      }
+    }
+  }
+}

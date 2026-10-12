@@ -1,0 +1,55 @@
+set_vacation:
+  fields:
+    zones:
+      example: "Wohnzimmer"
+      selector:
+        text:
+          multiple: true
+    temperature:
+      required: true
+      default: 15
+      selector:
+        number:
+          min: 4
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+clear_vacation:
+  fields:
+    zones:
+      example: "Wohnzimmer"
+      selector:
+        text:
+          multiple: true
+set_manual:
+  fields:
+    zones:
+      example: "Wohnzimmer"
+      selector:
+        text:
+          multiple: true
+    temperature:
+      required: true
+      default: 22
+      selector:
+        number:
+          min: 4
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+    hours:
+      required: true
+      default: 2
+      selector:
+        number:
+          min: 0.25
+          max: 336
+          step: 0.25
+          unit_of_measurement: "h"
+clear_manual:
+  fields:
+    zones:
+      example: "Wohnzimmer"
+      selector:
+        text:
+          multiple: true
