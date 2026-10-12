@@ -11,7 +11,7 @@ jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
@@ -35,7 +35,7 @@ jobs:
           - name: Home Assistant 2025.1
             packages: 'pytest-homeassistant-custom-component==0.13.205 "josepy<2" "pycares<4.9"'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
