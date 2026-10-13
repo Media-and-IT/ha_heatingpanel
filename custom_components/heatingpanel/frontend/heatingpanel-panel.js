@@ -85,8 +85,6 @@ const STRINGS = {
     no_selection: "Choose",
     schedule_title: "Weekly schedule",
     schedule_hint: "A day runs from 05:00 to 05:00 the next day.",
-    cold: "cold",
-    warm: "warm",
     night: "Night",
     range_label: "{day}, {from} to {to}",
     expand: "Expand {day}",
@@ -166,8 +164,6 @@ const STRINGS = {
     no_selection: "Auswählen",
     schedule_title: "Wochenplan",
     schedule_hint: "Ein Tag läuft von 05:00 bis 05:00 am Folgetag.",
-    cold: "kalt",
-    warm: "warm",
     night: "Nacht",
     range_label: "{day}, {from} bis {to}",
     expand: "{day} aufklappen",
@@ -267,13 +263,6 @@ function tempTextClass(value) {
   };
   const luminance = 0.2126 * channel(0) + 0.7152 * channel(8) + 0.0722 * channel(4);
   return luminance > 0.3 ? "dark-text" : "";
-}
-
-/** Gradient across the scale for the legend, from frost to hot in the unit of the instance. */
-function legendGradient() {
-  const toUnit = (celsius) => (units.unit === "°F" ? (celsius * 9) / 5 + 32 : celsius);
-  const stops = COLOR_STOPS.map(([celsius], i) => `${tempColor(toUnit(celsius))} ${((i / (COLOR_STOPS.length - 1)) * 100).toFixed(0)}%`);
-  return `linear-gradient(90deg, ${stops.join(", ")})`;
 }
 
 /** Choice of temperatures for the selects, plus a stored value that is off the grid. */
@@ -700,10 +689,7 @@ class HeatingPanel extends HTMLElement {
       </div>
       ${this._renderOverrides(live)}
       <div class="card schedule">
-        <div class="card-header schedule-header">
-          <div>${t("schedule_title")}<div class="card-subtitle">${t("schedule_hint")}</div></div>
-          <div class="legend" aria-hidden="true"><span>${t("cold")}</span><span class="legend-bar" style="background:${legendGradient()}"></span><span>${t("warm")}</span></div>
-        </div>
+        <div class="card-header">${t("schedule_title")}<div class="card-subtitle">${t("schedule_hint")}</div></div>
         ${DAYS.map((day) => this._renderDay(day)).join("")}
         <div class="day all-days">
           <div class="day-row">
@@ -1300,9 +1286,6 @@ ha-icon { --mdc-icon-size: 24px; display: inline-flex; flex: none; }
 }
 .card-header { padding: 16px 16px 8px; font-size: 20px; font-weight: 400; line-height: 28px; }
 .card-subtitle { font-size: 14px; color: var(--hp-secondary); line-height: 20px; }
-.schedule-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
-.legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--hp-secondary); line-height: 20px; }
-.legend-bar { width: 140px; height: 8px; border-radius: 4px; }
 .card-content { padding: 16px; }
 .card-actions {
   display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
