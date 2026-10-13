@@ -18,16 +18,19 @@ const MODE_ICONS = {
   vacation: "mdi:airplane",
 };
 const DEFAULT_BOUNDS = [120, 240, 600, 960];
-// Colour scale of the schedule bars as [°C, [hue, saturation, lightness]]:
-// frost blue, eco green, then amber, orange and red across the comfort range.
+// Colour scale of the schedule bars as [°C, [hue, saturation, lightness]], like a thermal map.
+// The hues are spread over the range people actually heat with, so 19 °C and 21 °C differ
+// clearly: blue up to 15 °C, teal 17, green 19, lime 20, yellow 21, orange 22, red from 24.
 const COLOR_STOPS = [
-  [8, [210, 75, 52]],
-  [13, [180, 65, 38]],
-  [16, [125, 45, 42]],
-  [18, [46, 92, 50]],
-  [20, [30, 95, 52]],
-  [22, [12, 85, 52]],
-  [24, [-8, 70, 46]],
+  [10, [220, 70, 50]],
+  [15, [205, 80, 48]],
+  [17, [180, 70, 38]],
+  [19, [125, 50, 42]],
+  [20, [88, 60, 44]],
+  [21, [48, 92, 50]],
+  [22, [30, 95, 52]],
+  [23, [12, 85, 50]],
+  [24, [-5, 75, 46]],
 ];
 
 const STRINGS = {
@@ -82,6 +85,8 @@ const STRINGS = {
     no_selection: "Choose",
     schedule_title: "Weekly schedule",
     schedule_hint: "A day runs from 05:00 to 05:00 the next day.",
+    cold: "cold",
+    warm: "warm",
     night: "Night",
     range_label: "{day}, {from} to {to}",
     expand: "Expand {day}",
@@ -161,6 +166,8 @@ const STRINGS = {
     no_selection: "Auswählen",
     schedule_title: "Wochenplan",
     schedule_hint: "Ein Tag läuft von 05:00 bis 05:00 am Folgetag.",
+    cold: "kalt",
+    warm: "warm",
     night: "Nacht",
     range_label: "{day}, {from} bis {to}",
     expand: "{day} aufklappen",
@@ -249,10 +256,24 @@ function tempColor(value) {
   return `hsl(${((h + 360) % 360).toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%)`;
 }
 
-/** Dark text on the bright yellow part of the scale, white text everywhere else. */
+/** Dark text on bright colours, white text on dark ones (relative luminance of the colour). */
 function tempTextClass(value) {
-  const [h] = tempHsl(value);
-  return h >= 38 && h <= 100 ? "dark-text" : "";
+  const [h, s, l] = tempHsl(value);
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const channel = (n) => {
+    const k = (n + ((h + 360) % 360) / 30) % 12;
+    const c = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * channel(0) + 0.7152 * channel(8) + 0.0722 * channel(4);
+  return luminance > 0.3 ? "dark-text" : "";
+}
+
+/** Gradient across the scale for the legend, from frost to hot in the unit of the instance. */
+function legendGradient() {
+  const toUnit = (celsius) => (units.unit === "°F" ? (celsius * 9) / 5 + 32 : celsius);
+  const stops = COLOR_STOPS.map(([celsius], i) => `${tempColor(toUnit(celsius))} ${((i / (COLOR_STOPS.length - 1)) * 100).toFixed(0)}%`);
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
 }
 
 /** Choice of temperatures for the selects, plus a stored value that is off the grid. */
@@ -679,7 +700,10 @@ class HeatingPanel extends HTMLElement {
       </div>
       ${this._renderOverrides(live)}
       <div class="card schedule">
-        <div class="card-header">${t("schedule_title")}<div class="card-subtitle">${t("schedule_hint")}</div></div>
+        <div class="card-header schedule-header">
+          <div>${t("schedule_title")}<div class="card-subtitle">${t("schedule_hint")}</div></div>
+          <div class="legend" aria-hidden="true"><span>${t("cold")}</span><span class="legend-bar" style="background:${legendGradient()}"></span><span>${t("warm")}</span></div>
+        </div>
         ${DAYS.map((day) => this._renderDay(day)).join("")}
         <div class="day all-days">
           <div class="day-row">
@@ -1276,6 +1300,9 @@ ha-icon { --mdc-icon-size: 24px; display: inline-flex; flex: none; }
 }
 .card-header { padding: 16px 16px 8px; font-size: 20px; font-weight: 400; line-height: 28px; }
 .card-subtitle { font-size: 14px; color: var(--hp-secondary); line-height: 20px; }
+.schedule-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--hp-secondary); line-height: 20px; }
+.legend-bar { width: 140px; height: 8px; border-radius: 4px; }
 .card-content { padding: 16px; }
 .card-actions {
   display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
@@ -1448,11 +1475,12 @@ ha-icon { --mdc-icon-size: 24px; display: inline-flex; flex: none; }
 }
 @container (max-width: 52px) { .seg span { display: none; } }
 .seg.dark-text { color: rgba(0, 0, 0, 0.8); text-shadow: none; }
-.seg.w0 { background: color-mix(in srgb, var(--hp-primary) 18%, var(--hp-fill)); }
-.seg.w1 { background: color-mix(in srgb, var(--hp-primary) 32%, var(--hp-fill)); }
-.seg.w2 { background: color-mix(in srgb, var(--hp-primary) 46%, var(--hp-fill)); }
-.seg.w3 { background: color-mix(in srgb, var(--hp-primary) 60%, var(--hp-fill)); }
-.seg.w4 { background: color-mix(in srgb, var(--hp-primary) 74%, var(--hp-fill)); }
+/* neutral shades for the all days slider, so it is not mistaken for a temperature */
+.seg.w0 { background: color-mix(in srgb, var(--hp-text) 10%, var(--hp-card)); }
+.seg.w1 { background: color-mix(in srgb, var(--hp-text) 18%, var(--hp-card)); }
+.seg.w2 { background: color-mix(in srgb, var(--hp-text) 26%, var(--hp-card)); }
+.seg.w3 { background: color-mix(in srgb, var(--hp-text) 34%, var(--hp-card)); }
+.seg.w4 { background: color-mix(in srgb, var(--hp-text) 42%, var(--hp-card)); }
 .handle {
   position: absolute; top: 0; z-index: 2; width: 28px; height: 48px; margin-left: -14px;
   display: flex; align-items: center; justify-content: center;
